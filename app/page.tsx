@@ -45,11 +45,11 @@ export default async function Home() {
         </p>
       </header>
 
-      <section className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <section className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           label="Total value"
           primary={fmtCurrency(summary.total_value)}
-          secondary={summary.cash > 0 ? `${fmtCurrency(summary.cash)} cash` : undefined}
+          secondary={summary.cash !== 0 ? `${fmtCurrency(summary.cash)} cash` : undefined}
         />
         <StatCard
           label="Daily P&L"
@@ -72,6 +72,23 @@ export default async function Home() {
           tone={tone(summary.inception_pnl)}
         />
       </section>
+
+      {(summary.dividend_income_total > 0 || summary.dividend_income_ytd > 0) && (
+        <section className="mb-8 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
+          <span className="text-gray-500">
+            Dividend income YTD{" "}
+            <span className="font-medium text-gray-900">
+              {fmtCurrency(summary.dividend_income_ytd)}
+            </span>
+          </span>
+          <span className="text-gray-500">
+            All-time{" "}
+            <span className="font-medium text-gray-900">
+              {fmtCurrency(summary.dividend_income_total)}
+            </span>
+          </span>
+        </section>
+      )}
 
       <section className="mb-8 rounded-lg border border-gray-200 bg-white p-6">
         <PerformanceChart />
