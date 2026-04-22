@@ -10,10 +10,77 @@ html.dark {
   color-scheme: dark;
 }
 
+html {
+  @apply antialiased;
+}
+
 body {
-  @apply bg-white text-gray-900 antialiased;
+  @apply bg-gray-50 text-gray-900;
+  font-feature-settings: "cv11", "ss01", "ss03";
 }
 
 html.dark body {
   @apply bg-gray-950 text-gray-100;
+}
+
+/* Tabular numerals everywhere a number lives. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fade-in for content that mounts after an async fetch. */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 180ms ease-out both;
+}
+
+/* Skeleton shimmer used in chart/empty states. */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  @apply rounded-md bg-gray-100 dark:bg-gray-800;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  background-size: 400px 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.4s infinite linear;
+}
+html.dark .skeleton {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+}
+
+/* Horizontal-scroll hint for wide tables on narrow screens. */
+.scroll-hint {
+  background:
+    linear-gradient(to right, white 30%, rgba(255,255,255,0)),
+    linear-gradient(to right, rgba(255,255,255,0), white 70%) 100% 0,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.08), rgba(0,0,0,0)),
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.08), rgba(0,0,0,0)) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+html.dark .scroll-hint {
+  background:
+    linear-gradient(to right, rgb(17 24 39) 30%, rgba(17,24,39,0)),
+    linear-gradient(to right, rgba(17,24,39,0), rgb(17 24 39) 70%) 100% 0,
+    radial-gradient(farthest-side at 0 50%, rgba(255,255,255,0.08), rgba(255,255,255,0)),
+    radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,0.08), rgba(255,255,255,0)) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
 }

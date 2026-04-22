@@ -8,7 +8,7 @@
 export type PositionRow = {
   ticker: string;
   name: string;                // "Company" column
-  committee: { id: string; name: string } | null;
+  committee: { id: string; name: string; color: string | null } | null;
 
   // Price movement.
   day_change_pct: number | null;

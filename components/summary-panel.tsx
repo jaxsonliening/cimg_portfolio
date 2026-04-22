@@ -42,9 +42,9 @@ export function SummaryPanel({ summary }: { summary: PortfolioSummary }) {
   });
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <div className="overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-3.5">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
           Portfolio Summary
         </h2>
         <ExportButton filename="summary.csv" build={build} />
@@ -52,16 +52,16 @@ export function SummaryPanel({ summary }: { summary: PortfolioSummary }) {
       <table className="w-full text-sm">
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           {rows.map((r) => (
-            <tr key={r.label}>
+            <tr key={r.label} className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
               <td
-                className={`px-4 py-2 text-gray-700 dark:text-gray-300 ${
+                className={`px-5 py-2.5 text-gray-600 dark:text-gray-300 ${
                   r.bold ? "font-semibold text-gray-900 dark:text-gray-100" : ""
                 }`}
               >
                 {r.label}
               </td>
               <td
-                className={`px-4 py-2 text-right tabular-nums ${
+                className={`px-5 py-2.5 text-right tabular-nums ${
                   r.bold ? "font-semibold text-gray-900 dark:text-gray-100" : ""
                 } ${r.tone !== undefined ? toneClass(r.tone) : ""}`}
               >

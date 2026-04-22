@@ -10,14 +10,14 @@ export function WinnersLosersPanel({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3">
-        <div className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Since Last Update Toggle
+      <div className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-4 shadow-sm transition-shadow hover:shadow-md">
+        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
+          Since Last Update
         </div>
-        <div className="mt-3 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <div className="mt-3 text-[11px] uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
           Last Update Trading Day
         </div>
-        <div className="mt-1 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+        <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900 dark:text-gray-100">
           {fmtDateShort(summary.last_update_trading_day)}
         </div>
       </div>
@@ -39,20 +39,22 @@ function MoversCard({
 }) {
   const rowBg =
     variant === "up"
-      ? "bg-green-50 dark:bg-green-950/40"
-      : "bg-red-50 dark:bg-red-950/40";
+      ? "bg-emerald-50/70 dark:bg-emerald-950/30"
+      : "bg-rose-50/70 dark:bg-rose-950/30";
   const textTone =
     variant === "up"
-      ? "text-green-700 dark:text-green-400"
-      : "text-red-700 dark:text-red-400";
+      ? "text-emerald-700 dark:text-emerald-400"
+      : "text-rose-700 dark:text-rose-400";
+  const glyph = variant === "up" ? "▲" : "▼";
 
   const padded: (MoverRow | null)[] = [...rows];
   while (padded.length < 3) padded.push(null);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div className="border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <div className="overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 px-5 py-3.5">
+        <span className={`text-xs ${textTone}`}>{glyph}</span>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
           {title}
         </h3>
       </div>
@@ -60,7 +62,7 @@ function MoversCard({
         {padded.map((m, i) => (
           <li
             key={m?.ticker ?? `empty-${i}`}
-            className={`flex items-center justify-between px-4 py-2 text-sm ${
+            className={`flex items-center justify-between px-5 py-2.5 text-sm transition-colors ${
               m ? rowBg : ""
             }`}
           >
@@ -77,7 +79,7 @@ function MoversCard({
                 </div>
               </>
             ) : (
-              <span className="text-gray-400 dark:text-gray-600">—</span>
+              <span className="text-gray-300 dark:text-gray-700">—</span>
             )}
           </li>
         ))}

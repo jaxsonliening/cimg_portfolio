@@ -41,7 +41,7 @@ type ColumnDef = {
   key: SortKey;
   label: string;
   right?: boolean;
-  csv: string;                // header name in the exported CSV
+  csv: string;
   csvValue: (p: PositionRow) => string | number | null;
 };
 
@@ -58,11 +58,11 @@ const COLUMNS: ColumnDef[] = [
   { key: "avg_cost", label: "Average Cost", right: true, csv: "Average Cost ($)", csvValue: (p) => p.avg_cost },
   { key: "current_weight", label: "Current Weight", right: true, csv: "Current Weight (decimal)", csvValue: (p) => p.current_weight },
   { key: "target_weight", label: "Target Weight", right: true, csv: "Target Weight (decimal)", csvValue: (p) => p.target_weight },
-  { key: "intrinsic_value", label: "Intrinsic Value Estimate", right: true, csv: "Intrinsic Value Estimate ($)", csvValue: (p) => p.intrinsic_value },
+  { key: "intrinsic_value", label: "Intrinsic Value", right: true, csv: "Intrinsic Value Estimate ($)", csvValue: (p) => p.intrinsic_value },
   { key: "v_over_p", label: "V/P", right: true, csv: "V/P", csvValue: (p) => p.v_over_p },
   { key: "unrealized_pnl", label: "Unrealized P/L", right: true, csv: "Unrealized P/L ($)", csvValue: (p) => p.unrealized_pnl },
   { key: "current_size", label: "Current Size", right: true, csv: "Current Size ($)", csvValue: (p) => p.current_size },
-  { key: "current_quantity", label: "Current Quantity", right: true, csv: "Current Quantity", csvValue: (p) => p.current_quantity },
+  { key: "current_quantity", label: "Qty", right: true, csv: "Current Quantity", csvValue: (p) => p.current_quantity },
   { key: "initial_purchase", label: "Initial Purchase", right: true, csv: "Initial Purchase", csvValue: (p) => p.initial_purchase },
   { key: "committee", label: "Committee", csv: "Committee", csvValue: (p) => p.committee?.name ?? null },
 ];
@@ -89,7 +89,7 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
 
   if (positions.length === 0) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-400 dark:text-gray-500">
+      <div className="flex h-40 items-center justify-center rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-400 dark:text-gray-500 shadow-sm">
         No open positions yet.
       </div>
     );
@@ -97,12 +97,15 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {sorted.length} holdings · click any column to sort
+        </p>
         <ExportButton filename="positions.csv" build={build} />
       </div>
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="scroll-hint overflow-x-auto rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
         <table className="min-w-full text-sm">
-          <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <thead className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-800 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm text-left text-[11px] uppercase tracking-[0.06em] text-gray-500 dark:text-gray-400">
             <tr>
               {COLUMNS.map((c) => (
                 <SortableTh
@@ -119,9 +122,16 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {sorted.map((p) => (
-              <tr key={p.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <tr
+                key={p.ticker}
+                className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40"
+              >
                 <Td strong>{p.name}</Td>
-                <Td strong>{p.ticker}</Td>
+                <Td strong>
+                  <span className="rounded bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-gray-700 dark:text-gray-300">
+                    {p.ticker}
+                  </span>
+                </Td>
                 <TdPct value={p.day_change_pct} />
                 <TdPct value={p.week_change_pct} />
                 <TdPct value={p.month_change_pct} />
@@ -129,7 +139,7 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
                 <TdPct value={p.total_return_pct} />
                 <Td right tone={p.annualized_return_pct}>
                   {p.held_less_than_one_year
-                    ? "<1Yr"
+                    ? <span className="text-gray-400 dark:text-gray-500">&lt;1Yr</span>
                     : fmtPctSigned(p.annualized_return_pct)}
                 </Td>
                 <Td right>{fmtCurrency(p.current_price)}</Td>
@@ -144,7 +154,20 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
                 <Td right>{fmtCurrency(p.current_size)}</Td>
                 <Td right>{fmtInteger(p.current_quantity)}</Td>
                 <Td right>{fmtDateShort(p.initial_purchase)}</Td>
-                <Td>{p.committee?.name ?? "—"}</Td>
+                <Td>
+                  {p.committee ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: p.committee.color ?? "#9ca3af" }}
+                        aria-hidden
+                      />
+                      <span>{p.committee.name}</span>
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </Td>
               </tr>
             ))}
           </tbody>
@@ -162,7 +185,6 @@ function sortRows(rows: PositionRow[], key: SortKey, dir: SortDir): PositionRow[
     const av = sortValue(a, key);
     const bv = sortValue(b, key);
 
-    // Nulls always go to the bottom, regardless of direction.
     if (av === null && bv === null) return 0;
     if (av === null) return 1;
     if (bv === null) return -1;
@@ -185,7 +207,6 @@ function sortValue(p: PositionRow, key: SortKey): string | number | null {
     case "month_change_pct": return p.month_change_pct;
     case "since_last_update_pct": return p.since_last_update_pct;
     case "total_return_pct": return p.total_return_pct;
-    // <1Yr rows sort as "no annualized return yet" — always trailing.
     case "annualized_return_pct":
       return p.held_less_than_one_year ? null : p.annualized_return_pct;
     case "current_price": return p.current_price;
@@ -197,7 +218,7 @@ function sortValue(p: PositionRow, key: SortKey): string | number | null {
     case "unrealized_pnl": return p.unrealized_pnl;
     case "current_size": return p.current_size;
     case "current_quantity": return p.current_quantity;
-    case "initial_purchase": return p.initial_purchase; // YYYY-MM-DD sorts lexicographically
+    case "initial_purchase": return p.initial_purchase;
     case "committee": return p.committee?.name ?? null;
   }
 }
@@ -218,12 +239,12 @@ function SortableTh({
   const arrow = active ? (direction === "asc" ? " ↑" : " ↓") : "";
   return (
     <th
-      className={`whitespace-nowrap px-3 py-2 font-medium ${right ? "text-right" : ""}`}
+      className={`whitespace-nowrap px-3 py-2.5 font-medium select-none ${right ? "text-right" : ""}`}
     >
       <button
         type="button"
         onClick={onClick}
-        className={`w-full text-left ${right ? "text-right" : ""} ${
+        className={`w-full ${right ? "text-right" : "text-left"} transition-colors ${
           active ? "text-gray-900 dark:text-gray-100" : "hover:text-gray-900 dark:hover:text-gray-100"
         }`}
       >
@@ -256,11 +277,22 @@ function Td({
 }
 
 function TdPct({ value }: { value: number | null }) {
+  const glyph =
+    value === null || value === 0
+      ? ""
+      : value > 0
+        ? "▲ "
+        : "▼ ";
   return (
     <td
       className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${toneClass(value)}`}
     >
-      {fmtPctSigned(value)}
+      {value === null ? "—" : (
+        <>
+          <span className="text-[10px] opacity-70">{glyph}</span>
+          {fmtPctSigned(value)}
+        </>
+      )}
     </td>
   );
 }

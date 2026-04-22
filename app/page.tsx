@@ -24,18 +24,20 @@ export default async function Home() {
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl p-6">
-      <header className="mb-8 flex items-start justify-between gap-4">
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <header className="mb-8 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">CIMG Portfolio</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            CIMG Portfolio
+          </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Updated every 15 minutes during market hours. As of {summary.as_of}.
+            Updated every 15 minutes during market hours · As of {summary.as_of}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/admin"
-            className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow"
           >
             Admin Sign In
           </Link>
@@ -43,7 +45,7 @@ export default async function Home() {
         </div>
       </header>
 
-      <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <section className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <SummaryPanel summary={summary} />
         </div>
@@ -52,29 +54,31 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="mb-8 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
         <PerformanceChart />
       </section>
 
-      <section className="mb-8 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+      <section className="mb-8 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
         <h2 className="mb-4 text-lg font-medium">Committee Allocation</h2>
         <CommitteePie data={committees} />
       </section>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <section className="mb-10">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
           Positions
         </h2>
         <PositionsTable positions={positions} />
       </section>
 
-      <footer className="mt-12 border-t border-gray-200 dark:border-gray-800 pt-6 text-xs text-gray-400 dark:text-gray-500">
+      <footer className="mt-12 border-t border-gray-200/70 dark:border-gray-800 pt-6 text-xs text-gray-400 dark:text-gray-500">
         All data served from the public API at{" "}
-        <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 py-0.5">/api/portfolio/*</code>.
-        Source on{" "}
+        <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 py-0.5">
+          /api/portfolio/*
+        </code>
+        . Source on{" "}
         <a
           href="https://github.com/jaxsonliening/cimg_portfolio"
-          className="underline hover:text-gray-600"
+          className="underline hover:text-gray-600 dark:hover:text-gray-300"
         >
           GitHub
         </a>

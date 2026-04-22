@@ -26,7 +26,7 @@ export async function getPositions(
         "id, ticker, name, committee_id, shares, cost_basis, purchased_at",
       ),
     supabase.from("trades").select("ticker, shares, price, traded_at"),
-    supabase.from("committees").select("id, name"),
+    supabase.from("committees").select("id, name, color"),
     supabase
       .from("ticker_meta")
       .select("ticker, target_weight, intrinsic_value, value_updated_at"),
@@ -140,7 +140,7 @@ export async function getPositions(
       ticker,
       name: enriched[0]?.name ?? lots[0].name,
       committee: committeeRow
-        ? { id: committeeRow.id, name: committeeRow.name }
+        ? { id: committeeRow.id, name: committeeRow.name, color: committeeRow.color ?? null }
         : null,
 
       day_change_pct: dayChange,
@@ -294,7 +294,7 @@ export async function getTickerPositions(
     supabase
       .from("trades")
       .select("ticker, shares, price, traded_at"),
-    supabase.from("committees").select("id, name"),
+    supabase.from("committees").select("id, name, color"),
   ]);
   if (lotsRes.error) throw lotsRes.error;
   if (tradesRes.error) throw tradesRes.error;

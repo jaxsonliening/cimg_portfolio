@@ -47,15 +47,15 @@ export function PerformanceChart() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-medium">Fund vs S&amp;P 500</h2>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1">
+          <div className="inline-flex rounded-lg bg-gray-100 dark:bg-gray-800 p-0.5">
             {RANGES.map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`rounded-md px-2.5 py-1 text-xs ${
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
                   r === range
-                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-                    : "border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
                 }`}
               >
                 {r}
@@ -75,10 +75,10 @@ export function PerformanceChart() {
       <div className="h-64">
         {status === "error" ? (
           <Empty>Couldn&apos;t load performance data.</Empty>
+        ) : status === "loading" && data.length === 0 ? (
+          <div className="skeleton h-full w-full" aria-label="Loading performance data" />
         ) : data.length === 0 ? (
-          <Empty>
-            {status === "loading" ? "Loading…" : "No data yet for this range."}
-          </Empty>
+          <Empty>No data yet for this range.</Empty>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ left: 12, right: 12, top: 8 }}>
