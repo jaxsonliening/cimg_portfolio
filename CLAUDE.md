@@ -148,9 +148,13 @@ Admin-only (`POST/PATCH/DELETE`) endpoints live under `/api/admin/*` and require
 - [x] Repo bootstrap: docs, schema sketch, gitignore
 - [x] Scaffold Next.js 16 app + Tailwind + Supabase clients + proxy
 - [x] Schema + auth trigger + DB types + setup guide (`docs/setup-supabase.md`)
+- [x] Magic-link login + admin auth gate (`/admin/login`, `/auth/callback`, `/admin`)
+- [x] First API endpoint: `GET /api/portfolio/committees` + `latestPricesFor` helper + `computeCommitteeAllocations` calc
 - [ ] Provision Supabase project, run `supabase/schema.sql`, seed 7 committees *(manual step)*
-- [ ] Wire magic-link login for the PM (admin layout + sign-in page)
-- [ ] Build dashboard read path (summary, chart, pie, positions table)
+- [ ] Remaining public API: `/summary`, `/performance`, `/positions`, `/positions/:ticker`
+- [ ] Admin CRUD for positions (add / close / edit cash)
+- [ ] Wire the dashboard UI to the real API (summary cards, chart, pie, positions table)
+- [ ] Cron handlers: `/api/cron/tick`, `/api/cron/daily`
 - [ ] Build admin CRUD for positions
 - [ ] GitHub Actions: 15-min intraday ticks + daily fundamentals snapshot
 - [ ] Tick retention job (prune `price_ticks` older than 30 days)
