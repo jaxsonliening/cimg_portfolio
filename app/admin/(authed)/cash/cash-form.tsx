@@ -81,7 +81,7 @@ export function CashForm({ tickers }: { tickers: string[] }) {
             className={`rounded-md px-3 py-1.5 text-sm ${
               kind === k.value
                 ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-                : "border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 dark:bg-gray-100 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                : "border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             }`}
           >
             {k.label}

@@ -25,7 +25,7 @@ export function SellSharesButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-100 px-2.5 py-1 text-xs hover:bg-gray-50 dark:hover:bg-gray-700"
+        className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs hover:bg-gray-50 dark:hover:bg-gray-700"
       >
         Sell…
       </button>

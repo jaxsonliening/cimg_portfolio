@@ -85,7 +85,7 @@ export function AddPositionForm({ committees }: { committees: Committee[] }) {
             required
             value={committeeId}
             onChange={(e) => setCommitteeId(e.target.value)}
-            className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-100 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
           >
             {committees.map((c) => (
               <option key={c.id} value={c.id}>
