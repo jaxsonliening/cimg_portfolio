@@ -1,0 +1,29 @@
+name: snapshot-daily
+
+# Daily close + fundamentals + fund_snapshots + tick pruning.
+# 22:30 UTC on weekdays = 18:30 ET (EDT) / 17:30 ET (EST).
+# Always after the 16:00 ET close; handler is idempotent if re-run.
+#
+# Requires repository secrets:
+#   APP_URL        — e.g. https://cimg-portfolio.vercel.app
+#   CRON_SECRET    — matches CRON_SECRET in the Vercel environment
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger daily endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+               --max-time 120 \
+               -X POST "$APP_URL/api/cron/daily" \
+               -H "Authorization: Bearer $CRON_SECRET"

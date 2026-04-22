@@ -37,15 +37,33 @@ One row per lot. **Shares and cost basis are immutable** — a correction is a n
 
 Derived (not stored): `market_value = shares × latest_price`, `unrealized_pnl = (latest_price − cost_basis) × shares`, `realized_pnl = (close_price − cost_basis) × shares` (when closed).
 
+### `price_ticks`
+
+Intraday vendor quote per ticker. Written every 15 min during US market hours by the `snapshot-ticks` job. Retained ~30 days, then pruned by the daily job.
+
+| column | type |
+| --- | --- |
+| `ticker` | `text` |
+| `observed_at` | `timestamptz` |
+| `price` | `numeric(18,4)` |
+| `source` | `text` — `'fmp'` or `'alpha_vantage'` |
+
+Primary key: `(ticker, observed_at)`. Index on `observed_at` for range queries.
+
+Used by:
+- `/api/portfolio/summary` — latest tick for "current price" and daily P&L calc
+- `/api/portfolio/performance?range=1D` — today's intraday series
+- Positions table — `current_price`, `market_value`, `unrealized_pnl`
+
 ### `price_snapshots`
 
-Daily vendor snapshot per ticker. Written by the cron, never by users.
+Daily vendor snapshot per ticker — the official daily close plus fundamentals. Written once after market close (17:00 ET) by the `snapshot-daily` job.
 
 | column | type |
 | --- | --- |
 | `ticker` | `text` |
 | `snapshot_date` | `date` |
-| `price` | `numeric(18,4)` |
+| `close_price` | `numeric(18,4)` — day's close (copied from the last `price_ticks` row) |
 | `market_cap` | `numeric(20,2)` |
 | `enterprise_value` | `numeric(20,2)` |
 | `pe_ratio` | `numeric(12,4)` |
@@ -56,7 +74,7 @@ Daily vendor snapshot per ticker. Written by the cron, never by users.
 | `source` | `text` — `'fmp'` or `'alpha_vantage'` |
 | `created_at` | `timestamptz` |
 
-Primary key: `(ticker, snapshot_date)`.
+Primary key: `(ticker, snapshot_date)`. This is the source of truth for historical ticker prices and the fundamentals view.
 
 ### `fund_snapshots`
 
@@ -71,16 +89,17 @@ Daily aggregate for the whole fund. Written by the cron after `price_snapshots`.
 
 ### `benchmark_snapshots`
 
-Daily S&P 500 (stored as `SPY` since the vendors offer it reliably).
+S&P 500 (`SPY`) prices. Written by both cron jobs — intraday ticks and a daily close row per session. `is_daily_close` flags the official daily row so historical joins skip intraday duplicates.
 
 | column | type |
 | --- | --- |
 | `symbol` | `text` |
-| `snapshot_date` | `date` |
+| `observed_at` | `timestamptz` |
 | `price` | `numeric(18,4)` |
+| `is_daily_close` | `boolean` default `false` |
 | `created_at` | `timestamptz` |
 
-Primary key: `(symbol, snapshot_date)`.
+Primary key: `(symbol, observed_at)`. Partial unique index on `(symbol, date(observed_at))` where `is_daily_close = true` so there's exactly one close per session.
 
 ### `profiles`
 
@@ -96,8 +115,8 @@ Extends `auth.users` with a role.
 
 - **No floats for money.** `numeric` throughout.
 - **No stored percentages.** Compute `pct = (value - cost) / cost` at read time.
-- **Dates, not timestamps, for snapshots.** One snapshot per day per key.
-- **Hard delete only `profiles` rows.** Positions are closed, not deleted — audit trail matters.
+- **`price_snapshots` uses `date` (one row per ticker per session); `price_ticks` uses `timestamptz`.**
+- **Hard delete only `profiles` rows and expired `price_ticks`.** Positions are closed, not deleted — audit trail matters.
 - **`ticker` is upper-cased at write time** so joins with snapshots are case-safe.
 
 ## Seed data

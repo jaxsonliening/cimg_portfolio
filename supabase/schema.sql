@@ -34,11 +34,25 @@ create table if not exists public.positions (
 create index if not exists positions_ticker_idx on public.positions (ticker);
 create index if not exists positions_open_idx   on public.positions (committee_id) where closed_at is null;
 
+-- ---------- price_ticks ----------
+-- Intraday quotes, written every 15 min during US market hours.
+-- Pruned to last ~30 days by the daily job.
+create table if not exists public.price_ticks (
+  ticker       text not null,
+  observed_at  timestamptz not null,
+  price        numeric(18,4) not null,
+  source       text not null,
+  primary key (ticker, observed_at)
+);
+
+create index if not exists price_ticks_observed_at_idx on public.price_ticks (observed_at);
+
 -- ---------- price_snapshots ----------
+-- Daily close + fundamentals, written once at 17:00 ET.
 create table if not exists public.price_snapshots (
   ticker            text not null,
   snapshot_date     date not null,
-  price             numeric(18,4) not null,
+  close_price       numeric(18,4) not null,
   market_cap        numeric(20,2),
   enterprise_value  numeric(20,2),
   pe_ratio          numeric(12,4),
@@ -62,13 +76,23 @@ create table if not exists public.fund_snapshots (
 );
 
 -- ---------- benchmark_snapshots ----------
+-- Holds both intraday ticks and daily closes for the benchmark (SPY).
+-- is_daily_close = true marks the official session close.
 create table if not exists public.benchmark_snapshots (
-  symbol         text not null,
-  snapshot_date  date not null,
-  price          numeric(18,4) not null,
-  created_at     timestamptz not null default now(),
-  primary key (symbol, snapshot_date)
+  symbol          text not null,
+  observed_at     timestamptz not null,
+  price           numeric(18,4) not null,
+  is_daily_close  boolean not null default false,
+  created_at      timestamptz not null default now(),
+  primary key (symbol, observed_at)
 );
+
+create unique index if not exists benchmark_snapshots_daily_close_uniq
+  on public.benchmark_snapshots (symbol, (observed_at::date))
+  where is_daily_close;
+
+create index if not exists benchmark_snapshots_observed_at_idx
+  on public.benchmark_snapshots (observed_at);
 
 -- ---------- profiles ----------
 create table if not exists public.profiles (
@@ -92,6 +116,7 @@ on conflict (id) do nothing;
 -- ---------- RLS ----------
 alter table public.committees           enable row level security;
 alter table public.positions            enable row level security;
+alter table public.price_ticks          enable row level security;
 alter table public.price_snapshots      enable row level security;
 alter table public.fund_snapshots       enable row level security;
 alter table public.benchmark_snapshots  enable row level security;
@@ -100,12 +125,14 @@ alter table public.profiles             enable row level security;
 -- public read on everything except profiles
 drop policy if exists "public read committees"          on public.committees;
 drop policy if exists "public read positions"           on public.positions;
+drop policy if exists "public read price_ticks"         on public.price_ticks;
 drop policy if exists "public read price_snapshots"     on public.price_snapshots;
 drop policy if exists "public read fund_snapshots"      on public.fund_snapshots;
 drop policy if exists "public read benchmark_snapshots" on public.benchmark_snapshots;
 
 create policy "public read committees"          on public.committees          for select using (true);
 create policy "public read positions"           on public.positions           for select using (true);
+create policy "public read price_ticks"         on public.price_ticks         for select using (true);
 create policy "public read price_snapshots"     on public.price_snapshots     for select using (true);
 create policy "public read fund_snapshots"      on public.fund_snapshots      for select using (true);
 create policy "public read benchmark_snapshots" on public.benchmark_snapshots for select using (true);

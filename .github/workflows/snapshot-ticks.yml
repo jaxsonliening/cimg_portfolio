@@ -1,0 +1,32 @@
+name: snapshot-ticks
+
+# Intraday price ticks. Runs every 15 min on weekdays; the API handler
+# short-circuits outside US market hours so misfires are free.
+#
+# GitHub Actions cron is UTC with no DST awareness. This window (13:00–21:15
+# UTC) covers both EDT market hours (13:30–20:00 UTC) and EST market hours
+# (14:30–21:00 UTC), plus a pre-open and post-close tick on each side.
+#
+# Requires repository secrets:
+#   APP_URL        — e.g. https://cimg-portfolio.vercel.app
+#   CRON_SECRET    — matches CRON_SECRET in the Vercel environment
+
+on:
+  schedule:
+    - cron: "*/15 13-21 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Trigger tick endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+               --max-time 60 \
+               -X POST "$APP_URL/api/cron/tick" \
+               -H "Authorization: Bearer $CRON_SECRET"

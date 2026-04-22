@@ -22,16 +22,29 @@ Top-of-page stats.
 }
 ```
 
-## `GET /api/portfolio/performance?range=1M|3M|6M|YTD|1Y|ALL`
+## `GET /api/portfolio/performance?range=1D|1M|3M|6M|YTD|1Y|ALL`
 
 Time series for the fund-vs-benchmark chart. Default `range=YTD`.
+
+- `1D` reads from `price_ticks` and `benchmark_snapshots` (intraday rows); `t` is an ISO timestamp.
+- All other ranges read from daily `fund_snapshots` joined to `benchmark_snapshots` where `is_daily_close = true`; `t` is an ISO date.
 
 ```json
 {
   "range": "YTD",
   "series": [
-    { "date": "2026-01-02", "fund": 172186.21, "benchmark": 100.00 },
-    { "date": "2026-01-03", "fund": 173002.55, "benchmark": 100.42 }
+    { "t": "2026-01-02",          "fund": 172186.21, "benchmark": 100.00 },
+    { "t": "2026-01-03",          "fund": 173002.55, "benchmark": 100.42 }
+  ]
+}
+```
+
+```json
+{
+  "range": "1D",
+  "series": [
+    { "t": "2026-04-22T13:30:00Z", "fund": 184012.10, "benchmark": 100.00 },
+    { "t": "2026-04-22T13:45:00Z", "fund": 184221.44, "benchmark": 100.05 }
   ]
 }
 ```
@@ -111,7 +124,7 @@ Single position with latest fundamentals.
 { "error": "unknown_ticker", "message": "No position found for ticker FOOBAR" }
 ```
 
-Status codes follow the usual conventions: `200` success, `400` bad query, `404` not found, `429` rate limited, `500` server error. The API is cached at the edge for 60 seconds on successful `GET` responses.
+Status codes follow the usual conventions: `200` success, `400` bad query, `404` not found, `429` rate limited, `500` server error. The API is cached at the edge for 60 seconds on successful `GET` responses — short enough that each 15-min tick propagates on the next request after it lands.
 
 ## Versioning
 

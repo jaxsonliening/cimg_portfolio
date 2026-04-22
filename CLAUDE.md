@@ -35,7 +35,7 @@ Hard requirements (from the owner):
 | Database | **Supabase Postgres** | Free tier, row-level security, auto-generated REST |
 | Auth | **Supabase Auth (email magic link)** | PM logs in, RLS gates writes |
 | Market data | **Financial Modeling Prep** (primary) with Alpha Vantage fallback | Free tiers; covers quotes + fundamentals |
-| Price ingestion | **Vercel Cron** hitting `/api/cron/snapshot` once a day after US close | Stays inside free-tier call limits, keeps UI fast |
+| Price ingestion | **GitHub Actions** on cron, hitting `/api/cron/tick` (intraday) and `/api/cron/daily` (fundamentals) | Vercel's free tier caps cron at daily; GH Actions runs every 15 min for free |
 | Hosting | **Vercel** (app) + **Supabase** (DB/auth) | Both free for this size |
 
 If the owner prefers a different stack, update this file **before** scaffolding.
@@ -52,6 +52,10 @@ If the owner prefers a different stack, update this file **before** scaffolding.
 │   └── api.md                # public API contract
 ├── supabase/
 │   └── schema.sql            # committees, positions, snapshots, RLS policies
+├── .github/
+│   └── workflows/
+│       ├── snapshot-ticks.yml   # every 15 min during US market hours
+│       └── snapshot-daily.yml   # once after close — fundamentals + daily totals
 ├── app/                      # Next.js App Router (added on scaffold)
 │   ├── (public)/             # public dashboard
 │   ├── admin/                # PM-only UI, gated by Supabase session
@@ -87,23 +91,24 @@ Never log, commit, or return the service-role key to the browser.
 
 - `committees` — 7 rows, fixed at seed time, each with a display color.
 - `positions` — one row per lot. Closing a position sets `closed_at` + `close_price`; rows are never hard-deleted.
-- `price_snapshots` — daily `(ticker, date) → price, market_cap, ev, pe, eps, div_yield, sector`. Written by the cron.
-- `fund_snapshots` — daily `(date) → total_value, cash`. Derived from positions + prices; stored for fast history queries.
-- `benchmark_snapshots` — daily `(symbol, date) → price`. `symbol='SPY'` stands in for S&P 500.
+- `price_ticks` — intraday `(ticker, observed_at) → price`. Written every 15 min during market hours; retained ~30 days then pruned.
+- `price_snapshots` — daily `(ticker, date) → close_price, market_cap, ev, pe, eps, div_yield, sector`. Written once after close; source of truth for historical ticker prices.
+- `fund_snapshots` — daily `(date) → total_value, cash`. Derived from positions + daily close; stored for fast multi-year history.
+- `benchmark_snapshots` — `(symbol, observed_at) → price`. Holds both intraday ticks and daily closes for `SPY`.
 
 ## Invariants
 
 - **Cost basis and shares are immutable after creation.** A correction is a new position row, not an update.
 - **Dates are stored as `date` (no time).** Market hours are handled by the ingestion job, not the UI.
 - **Money is stored as `numeric(18,4)`**, never `float`. Percentages are computed, never stored.
-- **`price_snapshots` is the source of truth for "what did this cost at time T".** The UI must not call the external market API directly.
+- **`price_ticks` is the source of truth for "current" prices; `price_snapshots` is the source of truth for historical daily closes.** The UI must not call the external market API directly.
 - **RLS is on for every table.** Public `SELECT` is explicit; all writes require an authenticated admin.
 
 ## API shape (public, read-only)
 
 ```
 GET /api/portfolio/summary                 → { total_value, daily_pnl, daily_pct, ytd_pnl, ytd_pct, as_of }
-GET /api/portfolio/performance?range=...   → { series: [{date, fund, benchmark}, ...] }
+GET /api/portfolio/performance?range=...   → { series: [{t, fund, benchmark}, ...] }  // range ∈ 1D,1M,3M,6M,YTD,1Y,ALL — 1D uses price_ticks, others use daily snapshots
 GET /api/portfolio/committees              → [{ name, value, pct, color }, ...]
 GET /api/portfolio/positions               → [{ ticker, committee, shares, cost_basis, current_price, market_value, unrealized_pnl, unrealized_pct }, ...]
 GET /api/portfolio/positions/:ticker       → full position + latest fundamentals
@@ -131,7 +136,8 @@ Admin-only (`POST/PATCH/DELETE`) endpoints live under `/api/admin/*` and require
 - [ ] Wire Supabase client + auth (magic link for PM)
 - [ ] Build dashboard read path (summary, chart, pie, positions table)
 - [ ] Build admin CRUD for positions
-- [ ] Cron job: daily price + fundamentals snapshot
+- [ ] GitHub Actions: 15-min intraday ticks + daily fundamentals snapshot
+- [ ] Tick retention job (prune `price_ticks` older than 30 days)
 - [ ] Load inception history (owner to provide CSV)
 - [ ] Deploy to Vercel, point custom domain
 
