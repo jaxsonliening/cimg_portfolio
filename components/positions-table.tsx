@@ -1,172 +1,93 @@
-"use client";
+import type { PositionRow } from "@/lib/portfolio/types";
+import {
+  fmtCurrency,
+  fmtDateShort,
+  fmtInteger,
+  fmtNumber,
+  fmtPctPlain,
+  fmtPctSigned,
+  fmtSignedCurrency,
+  toneClass,
+} from "./format";
 
-import { useState } from "react";
-import type { TickerPosition } from "@/lib/portfolio/positions";
-
-type Fundamentals = {
-  ticker: string;
-  market_cap: number | null;
-  enterprise_value: number | null;
-  pe_ratio: number | null;
-  eps: number | null;
-  dividend_yield: number | null;
-  sector: string | null;
-};
-
-export function PositionsTable({
-  positions,
-  fundamentals,
-}: {
-  positions: TickerPosition[];
-  fundamentals: Map<string, Fundamentals>;
-}) {
-  const [view, setView] = useState<"portfolio" | "fundamentals">("portfolio");
-
+export function PositionsTable({ positions }: { positions: PositionRow[] }) {
   if (positions.length === 0) {
     return (
-      <div className="flex h-56 items-center justify-center rounded-md bg-gray-50 dark:bg-gray-800 text-sm text-gray-400 dark:text-gray-500">
+      <div className="flex h-40 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-400 dark:text-gray-500">
         No open positions yet.
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-3 flex justify-end gap-1">
-        {(["portfolio", "fundamentals"] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`rounded-md px-2.5 py-1 text-xs ${
-              v === view
-                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
-                : "border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
-          >
-            {v === "portfolio" ? "Portfolio" : "Fundamentals"}
-          </button>
-        ))}
-      </div>
-      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <table className="min-w-full text-sm">
-          <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {view === "portfolio" ? <PortfolioHead /> : <FundamentalsHead />}
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-            {positions.map((p) => (
-              <tr key={p.ticker}>
-                {view === "portfolio" ? (
-                  <PortfolioRow p={p} />
-                ) : (
-                  <FundamentalsRow p={p} f={fundamentals.get(p.ticker) ?? null} />
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <table className="min-w-full text-sm">
+        <thead className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <tr>
+            <Th>Company</Th>
+            <Th>Ticker</Th>
+            <Th right>Day Change</Th>
+            <Th right>Week Change</Th>
+            <Th right>Month Change</Th>
+            <Th right>Since Last Update</Th>
+            <Th right>Total Return</Th>
+            <Th right>Annualized Return</Th>
+            <Th right>Current Price</Th>
+            <Th right>Average Cost</Th>
+            <Th right>Current Weight</Th>
+            <Th right>Target Weight</Th>
+            <Th right>Intrinsic Value Estimate</Th>
+            <Th right>V/P</Th>
+            <Th right>Unrealized P/L</Th>
+            <Th right>Current Size</Th>
+            <Th right>Current Quantity</Th>
+            <Th right>Initial Purchase</Th>
+            <Th>Committee</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {positions.map((p) => (
+            <tr key={p.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <Td strong>{p.name}</Td>
+              <Td strong>{p.ticker}</Td>
+              <TdPct value={p.day_change_pct} />
+              <TdPct value={p.week_change_pct} />
+              <TdPct value={p.month_change_pct} />
+              <TdPct value={p.since_last_update_pct} />
+              <TdPct value={p.total_return_pct} />
+              <Td right tone={p.annualized_return_pct}>
+                {p.held_less_than_one_year
+                  ? "<1Yr"
+                  : fmtPctSigned(p.annualized_return_pct)}
+              </Td>
+              <Td right>{fmtCurrency(p.current_price)}</Td>
+              <Td right>{fmtCurrency(p.avg_cost)}</Td>
+              <Td right>{fmtPctPlain(p.current_weight, 1)}</Td>
+              <Td right>{fmtPctPlain(p.target_weight, 1)}</Td>
+              <Td right>{fmtCurrency(p.intrinsic_value)}</Td>
+              <Td right>{fmtNumber(p.v_over_p, 2)}</Td>
+              <Td right tone={p.unrealized_pnl}>
+                {fmtSignedCurrency(p.unrealized_pnl)}
+              </Td>
+              <Td right>{fmtCurrency(p.current_size)}</Td>
+              <Td right>{fmtInteger(p.current_quantity)}</Td>
+              <Td right>{fmtDateShort(p.initial_purchase)}</Td>
+              <Td>{p.committee?.name ?? "—"}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function PortfolioHead() {
+function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return (
-    <tr>
-      <Th>Ticker</Th>
-      <Th>Name</Th>
-      <Th>Committee</Th>
-      <Th right>Shares</Th>
-      <Th right>Avg Cost</Th>
-      <Th right>Current</Th>
-      <Th right>Market Value</Th>
-      <Th right>Unrealized</Th>
-      <Th right>Realized</Th>
-      <Th right>Weight</Th>
-    </tr>
-  );
-}
-
-function PortfolioRow({ p }: { p: TickerPosition }) {
-  return (
-    <>
-      <Td strong>{p.ticker}</Td>
-      <Td>{p.name}</Td>
-      <Td>{p.committee?.name ?? "—"}</Td>
-      <Td right>{p.shares_remaining}</Td>
-      <Td right>{p.avg_cost_basis !== null ? `$${p.avg_cost_basis.toFixed(2)}` : "—"}</Td>
-      <Td right>{p.current_price !== null ? `$${p.current_price.toFixed(2)}` : "—"}</Td>
-      <Td right>{p.market_value !== null ? `$${p.market_value.toLocaleString()}` : "—"}</Td>
-      <Td right>
-        {p.unrealized_pnl !== null && p.unrealized_pct !== null ? (
-          <span className={p.unrealized_pnl >= 0 ? "text-green-600" : "text-red-600"}>
-            {p.unrealized_pnl >= 0 ? "+" : ""}
-            ${Math.abs(p.unrealized_pnl).toLocaleString()} (
-            {(p.unrealized_pct * 100).toFixed(2)}%)
-          </span>
-        ) : (
-          "—"
-        )}
-      </Td>
-      <Td right>
-        {p.realized_pnl !== 0 ? (
-          <span className={p.realized_pnl >= 0 ? "text-green-600" : "text-red-600"}>
-            {p.realized_pnl >= 0 ? "+" : ""}
-            ${Math.abs(p.realized_pnl).toLocaleString()}
-          </span>
-        ) : (
-          "—"
-        )}
-      </Td>
-      <Td right>{p.weight !== null ? `${(p.weight * 100).toFixed(1)}%` : "—"}</Td>
-    </>
-  );
-}
-
-function FundamentalsHead() {
-  return (
-    <tr>
-      <Th>Ticker</Th>
-      <Th right>Market Cap</Th>
-      <Th right>Enterprise Value</Th>
-      <Th right>P/E</Th>
-      <Th right>EPS</Th>
-      <Th right>Div Yield</Th>
-      <Th>Sector</Th>
-    </tr>
-  );
-}
-
-function FundamentalsRow({
-  p,
-  f,
-}: {
-  p: TickerPosition;
-  f: Fundamentals | null;
-}) {
-  return (
-    <>
-      <Td strong>{p.ticker}</Td>
-      <Td right>{f?.market_cap != null ? fmtCurrency(f.market_cap) : "—"}</Td>
-      <Td right>{f?.enterprise_value != null ? fmtCurrency(f.enterprise_value) : "—"}</Td>
-      <Td right>{f?.pe_ratio != null ? f.pe_ratio.toFixed(1) : "—"}</Td>
-      <Td right>{f?.eps != null ? `$${f.eps.toFixed(2)}` : "—"}</Td>
-      <Td right>
-        {f?.dividend_yield != null ? `${(f.dividend_yield * 100).toFixed(2)}%` : "—"}
-      </Td>
-      <Td>{f?.sector ?? "—"}</Td>
-    </>
-  );
-}
-
-function Th({
-  children,
-  right,
-}: {
-  children: React.ReactNode;
-  right?: boolean;
-}) {
-  return (
-    <th className={`px-4 py-2 font-medium ${right ? "text-right" : ""}`}>
+    <th
+      className={`whitespace-nowrap px-3 py-2 font-medium ${
+        right ? "text-right" : ""
+      }`}
+    >
       {children}
     </th>
   );
@@ -176,25 +97,29 @@ function Td({
   children,
   right,
   strong,
+  tone,
 }: {
   children: React.ReactNode;
   right?: boolean;
   strong?: boolean;
+  tone?: number | null;
 }) {
+  const base = right ? "text-right tabular-nums" : "";
+  const weight = strong
+    ? "font-medium text-gray-900 dark:text-gray-100"
+    : "text-gray-700 dark:text-gray-300";
+  const color = tone !== undefined ? toneClass(tone) : weight;
   return (
-    <td
-      className={`px-4 py-2 ${right ? "text-right tabular-nums" : ""} ${
-        strong ? "font-medium" : "text-gray-700 dark:text-gray-300"
-      }`}
-    >
-      {children}
-    </td>
+    <td className={`whitespace-nowrap px-3 py-2 ${base} ${color}`}>{children}</td>
   );
 }
 
-function fmtCurrency(n: number): string {
-  if (Math.abs(n) >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${n.toFixed(0)}`;
+function TdPct({ value }: { value: number | null }) {
+  return (
+    <td
+      className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${toneClass(value)}`}
+    >
+      {fmtPctSigned(value)}
+    </td>
+  );
 }
