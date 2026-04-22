@@ -147,7 +147,8 @@ Admin-only (`POST/PATCH/DELETE`) endpoints live under `/api/admin/*` and require
 
 - [x] Repo bootstrap: docs, schema sketch, gitignore
 - [x] Scaffold Next.js 16 app + Tailwind + Supabase clients + proxy
-- [ ] Provision Supabase project, run `supabase/schema.sql`, seed 7 committees
+- [x] Schema + auth trigger + DB types + setup guide (`docs/setup-supabase.md`)
+- [ ] Provision Supabase project, run `supabase/schema.sql`, seed 7 committees *(manual step)*
 - [ ] Wire magic-link login for the PM (admin layout + sign-in page)
 - [ ] Build dashboard read path (summary, chart, pie, positions table)
 - [ ] Build admin CRUD for positions

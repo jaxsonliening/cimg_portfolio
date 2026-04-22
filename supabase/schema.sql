@@ -142,22 +142,53 @@ drop policy if exists "own profile read" on public.profiles;
 create policy "own profile read" on public.profiles
   for select using (auth.uid() = user_id);
 
+-- Helper: is the current request's user an admin?
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
 -- admin-only writes on positions
 drop policy if exists "admin write positions" on public.positions;
 create policy "admin write positions" on public.positions
   for all
-  using (
-    exists (
-      select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.profiles p
-      where p.user_id = auth.uid() and p.role = 'admin'
-    )
-  );
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Snapshot tables are written only by the service role (which bypasses RLS),
 -- so no INSERT/UPDATE policies are granted to regular users.
+
+-- ---------- auto-create profiles row on signup ----------
+-- Every new auth.users row gets a matching public.profiles row with
+-- role='viewer'. Promote a user to admin by running:
+--   update public.profiles set role='admin' where user_id = '<uuid>';
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (user_id, role, display_name)
+  values (
+    new.id,
+    'viewer',
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1))
+  )
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
