@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { EnrichedPosition } from "@/lib/portfolio/positions";
+import type { TickerPosition } from "@/lib/portfolio/positions";
 
 type Fundamentals = {
   ticker: string;
@@ -17,7 +17,7 @@ export function PositionsTable({
   positions,
   fundamentals,
 }: {
-  positions: EnrichedPosition[];
+  positions: TickerPosition[];
   fundamentals: Map<string, Fundamentals>;
 }) {
   const [view, setView] = useState<"portfolio" | "fundamentals">("portfolio");
@@ -54,7 +54,7 @@ export function PositionsTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {positions.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.ticker}>
                 {view === "portfolio" ? (
                   <PortfolioRow p={p} />
                 ) : (
@@ -76,25 +76,24 @@ function PortfolioHead() {
       <Th>Name</Th>
       <Th>Committee</Th>
       <Th right>Shares</Th>
-      <Th right>Cost basis</Th>
-      <Th>Purchased</Th>
+      <Th right>Avg cost</Th>
       <Th right>Current</Th>
       <Th right>Market value</Th>
       <Th right>Unrealized</Th>
+      <Th right>Realized</Th>
       <Th right>Weight</Th>
     </tr>
   );
 }
 
-function PortfolioRow({ p }: { p: EnrichedPosition }) {
+function PortfolioRow({ p }: { p: TickerPosition }) {
   return (
     <>
       <Td strong>{p.ticker}</Td>
       <Td>{p.name}</Td>
       <Td>{p.committee?.name ?? "—"}</Td>
-      <Td right>{p.shares}</Td>
-      <Td right>${p.cost_basis.toFixed(2)}</Td>
-      <Td>{p.purchased_at}</Td>
+      <Td right>{p.shares_remaining}</Td>
+      <Td right>{p.avg_cost_basis !== null ? `$${p.avg_cost_basis.toFixed(2)}` : "—"}</Td>
       <Td right>{p.current_price !== null ? `$${p.current_price.toFixed(2)}` : "—"}</Td>
       <Td right>{p.market_value !== null ? `$${p.market_value.toLocaleString()}` : "—"}</Td>
       <Td right>
@@ -103,6 +102,16 @@ function PortfolioRow({ p }: { p: EnrichedPosition }) {
             {p.unrealized_pnl >= 0 ? "+" : ""}
             ${Math.abs(p.unrealized_pnl).toLocaleString()} (
             {(p.unrealized_pct * 100).toFixed(2)}%)
+          </span>
+        ) : (
+          "—"
+        )}
+      </Td>
+      <Td right>
+        {p.realized_pnl !== 0 ? (
+          <span className={p.realized_pnl >= 0 ? "text-green-600" : "text-red-600"}>
+            {p.realized_pnl >= 0 ? "+" : ""}
+            ${Math.abs(p.realized_pnl).toLocaleString()}
           </span>
         ) : (
           "—"
@@ -131,7 +140,7 @@ function FundamentalsRow({
   p,
   f,
 }: {
-  p: EnrichedPosition;
+  p: TickerPosition;
   f: Fundamentals | null;
 }) {
   return (

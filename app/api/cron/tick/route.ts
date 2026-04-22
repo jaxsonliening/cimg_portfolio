@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchQuotes } from "@/lib/market/fmp";
 import { isWithinMarketHours } from "@/lib/market/hours";
+import { getActiveTickers } from "@/lib/portfolio/active-tickers";
 
 const BENCHMARK = "SPY";
 
@@ -20,13 +21,12 @@ export async function POST(request: Request) {
     return fail("config_error", err);
   }
 
-  const { data: positions, error: positionsError } = await supabase
-    .from("positions")
-    .select("ticker")
-    .is("closed_at", null);
-  if (positionsError) return fail("positions_query_failed", positionsError);
-
-  const tickers = Array.from(new Set(positions.map((p) => p.ticker)));
+  let tickers: string[];
+  try {
+    tickers = await getActiveTickers(supabase);
+  } catch (err) {
+    return fail("positions_query_failed", err);
+  }
   const symbols = Array.from(new Set([...tickers, BENCHMARK]));
 
   let quotes;

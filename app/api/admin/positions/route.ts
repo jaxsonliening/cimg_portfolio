@@ -23,9 +23,7 @@ export async function POST(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -51,7 +49,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await supabase
+  // Insert the lot first, then the matching cash outflow. If the cash
+  // insert fails, delete the lot so the two stay consistent — Supabase
+  // doesn't give us multi-table transactions through the REST client.
+  const { data: inserted, error: insertError } = await supabase
     .from("positions")
     .insert({
       ticker: parsed.data.ticker,
@@ -65,13 +66,28 @@ export async function POST(request: Request) {
     })
     .select("id")
     .single();
-
-  if (error) {
+  if (insertError) {
     return NextResponse.json(
-      { error: "insert_failed", message: error.message },
+      { error: "insert_failed", message: insertError.message },
       { status: 400 },
     );
   }
 
-  return NextResponse.json({ id: data.id }, { status: 201 });
+  const { error: cashError } = await supabase.from("cash_transactions").insert({
+    amount: -(parsed.data.shares * parsed.data.cost_basis),
+    kind: "trade_buy",
+    ticker: parsed.data.ticker,
+    occurred_at: parsed.data.purchased_at,
+    note: `Buy ${parsed.data.shares} ${parsed.data.ticker} @ ${parsed.data.cost_basis}`,
+    created_by: user.id,
+  });
+  if (cashError) {
+    await supabase.from("positions").delete().eq("id", inserted.id);
+    return NextResponse.json(
+      { error: "cash_insert_failed", message: cashError.message },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ id: inserted.id }, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchQuotes, fetchProfiles } from "@/lib/market/fmp";
+import { getActiveSharesByTicker } from "@/lib/portfolio/active-tickers";
 
 const BENCHMARK = "SPY";
 const TICK_RETENTION_DAYS = 30;
@@ -16,13 +17,14 @@ export async function POST(request: Request) {
     return fail("config_error", err);
   }
 
-  const { data: positions, error: positionsError } = await supabase
-    .from("positions")
-    .select("ticker, shares")
-    .is("closed_at", null);
-  if (positionsError) return fail("positions_query_failed", positionsError);
+  let sharesByTicker: Map<string, number>;
+  try {
+    sharesByTicker = await getActiveSharesByTicker(supabase);
+  } catch (err) {
+    return fail("positions_query_failed", err);
+  }
 
-  const tickers = Array.from(new Set(positions.map((p) => p.ticker)));
+  const tickers = Array.from(sharesByTicker.keys());
   const symbols = Array.from(new Set([...tickers, BENCHMARK]));
 
   const [quotes, profiles] = await Promise.all([
@@ -71,23 +73,24 @@ export async function POST(request: Request) {
       }
     : null;
 
-  const fundValue = positions.reduce((sum, p) => {
-    const q = quotesBySymbol.get(p.ticker);
-    return sum + (q ? p.shares * q.price : 0);
-  }, 0);
+  let fundValue = 0;
+  for (const [ticker, shares] of sharesByTicker) {
+    const q = quotesBySymbol.get(ticker);
+    if (q) fundValue += shares * q.price;
+  }
 
-  const { data: prevFund } = await supabase
-    .from("fund_snapshots")
-    .select("cash")
-    .order("snapshot_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const cash = prevFund?.cash ?? 0;
+  // Cash is the running sum of every cash_transactions row up through today.
+  const { data: cashRows, error: cashError } = await supabase
+    .from("cash_transactions")
+    .select("amount")
+    .lte("occurred_at", today);
+  if (cashError) return fail("cash_query_failed", cashError);
+  const cash = (cashRows ?? []).reduce((sum, r) => sum + r.amount, 0);
 
   const fundRow = {
     snapshot_date: today,
     total_value: Math.round((fundValue + cash) * 10000) / 10000,
-    cash,
+    cash: Math.round(cash * 10000) / 10000,
   };
 
   const pruneCutoff = new Date(

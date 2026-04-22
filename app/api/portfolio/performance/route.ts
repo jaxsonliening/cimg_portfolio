@@ -5,6 +5,7 @@ import {
   normalizeToHundred,
   type Tick,
 } from "@/lib/calc/performance";
+import { getActiveSharesByTicker } from "@/lib/portfolio/active-tickers";
 
 export const revalidate = 60;
 
@@ -52,13 +53,20 @@ async function intradaySeries(
   const dayStart = `${sessionDate}T00:00:00Z`;
   const dayEnd = `${sessionDate}T23:59:59.999Z`;
 
-  const { data: positions, error: positionsErr } = await supabase
-    .from("positions")
-    .select("ticker, shares")
-    .is("closed_at", null);
-  if (positionsErr) return fail("positions_query_failed", positionsErr.message);
+  let sharesByTicker: Map<string, number>;
+  try {
+    sharesByTicker = await getActiveSharesByTicker(supabase);
+  } catch (err) {
+    return fail(
+      "positions_query_failed",
+      err instanceof Error ? err.message : "unknown",
+    );
+  }
 
-  const tickers = Array.from(new Set(positions.map((p) => p.ticker)));
+  const positions = Array.from(sharesByTicker.entries()).map(
+    ([ticker, shares]) => ({ ticker, shares }),
+  );
+  const tickers = positions.map((p) => p.ticker);
 
   const [ticksRes, benchmarkRes] = await Promise.all([
     tickers.length

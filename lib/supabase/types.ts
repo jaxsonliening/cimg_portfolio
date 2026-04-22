@@ -38,8 +38,6 @@ export type Database = {
           cost_basis: number;
           purchased_at: string;
           thesis: string | null;
-          closed_at: string | null;
-          close_price: number | null;
           created_by: string | null;
           created_at: string;
         };
@@ -52,8 +50,6 @@ export type Database = {
           cost_basis: number;
           purchased_at: string;
           thesis?: string | null;
-          closed_at?: string | null;
-          close_price?: number | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -66,8 +62,93 @@ export type Database = {
           cost_basis?: number;
           purchased_at?: string;
           thesis?: string | null;
-          closed_at?: string | null;
-          close_price?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      trades: {
+        Row: {
+          id: string;
+          ticker: string;
+          shares: number;
+          price: number;
+          traded_at: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticker: string;
+          shares: number;
+          price: number;
+          traded_at: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ticker?: string;
+          shares?: number;
+          price?: number;
+          traded_at?: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      cash_transactions: {
+        Row: {
+          id: string;
+          amount: number;
+          kind:
+            | "deposit"
+            | "withdrawal"
+            | "dividend"
+            | "trade_buy"
+            | "trade_sell"
+            | "fee"
+            | "adjustment";
+          ticker: string | null;
+          occurred_at: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          amount: number;
+          kind:
+            | "deposit"
+            | "withdrawal"
+            | "dividend"
+            | "trade_buy"
+            | "trade_sell"
+            | "fee"
+            | "adjustment";
+          ticker?: string | null;
+          occurred_at: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          amount?: number;
+          kind?:
+            | "deposit"
+            | "withdrawal"
+            | "dividend"
+            | "trade_buy"
+            | "trade_sell"
+            | "fee"
+            | "adjustment";
+          ticker?: string | null;
+          occurred_at?: string;
+          note?: string | null;
           created_by?: string | null;
           created_at?: string;
         };

@@ -3,17 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function ClosePositionButton({
-  id,
+export function SellSharesButton({
   ticker,
+  maxShares,
 }: {
-  id: string;
   ticker: string;
+  maxShares: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [closedAt, setClosedAt] = useState(() => new Date().toISOString().slice(0, 10));
-  const [closePrice, setClosePrice] = useState("");
+  const [shares, setShares] = useState(String(maxShares));
+  const [price, setPrice] = useState("");
+  const [tradedAt, setTradedAt] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +27,7 @@ export function ClosePositionButton({
         onClick={() => setOpen(true)}
         className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs hover:bg-gray-50"
       >
-        Close…
+        Sell…
       </button>
     );
   }
@@ -34,41 +37,55 @@ export function ClosePositionButton({
     setStatus("saving");
     setError(null);
 
-    const res = await fetch(`/api/admin/positions/${id}`, {
-      method: "PATCH",
+    const res = await fetch("/api/admin/trades", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ closed_at: closedAt, close_price: closePrice }),
+      body: JSON.stringify({
+        ticker,
+        shares,
+        price,
+        traded_at: tradedAt,
+      }),
     });
-
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       setError(body.message ?? body.error ?? `HTTP ${res.status}`);
       setStatus("idle");
       return;
     }
-
     router.refresh();
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2 text-xs">
-      <span className="text-gray-500">{ticker}</span>
+    <form onSubmit={submit} className="flex flex-wrap items-center gap-2 text-xs">
       <input
-        type="date"
-        value={closedAt}
-        onChange={(e) => setClosedAt(e.target.value)}
+        type="number"
+        step="0.0001"
+        min="0.0001"
+        max={maxShares}
+        value={shares}
+        onChange={(e) => setShares(e.target.value)}
         required
-        className="rounded border border-gray-300 px-1.5 py-0.5"
+        className="w-20 rounded border border-gray-300 px-1.5 py-0.5 text-right tabular-nums"
+        title={`Max ${maxShares}`}
       />
+      <span className="text-gray-400">@</span>
       <input
         type="number"
         step="0.0001"
         min="0"
-        placeholder="close px"
-        value={closePrice}
-        onChange={(e) => setClosePrice(e.target.value)}
+        placeholder="price"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
         required
         className="w-24 rounded border border-gray-300 px-1.5 py-0.5 text-right tabular-nums"
+      />
+      <input
+        type="date"
+        value={tradedAt}
+        onChange={(e) => setTradedAt(e.target.value)}
+        required
+        className="rounded border border-gray-300 px-1.5 py-0.5"
       />
       <button
         type="submit"
@@ -84,7 +101,7 @@ export function ClosePositionButton({
       >
         Cancel
       </button>
-      {error && <span className="text-red-600">{error}</span>}
+      {error && <span className="w-full text-red-600">{error}</span>}
     </form>
   );
 }

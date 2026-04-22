@@ -18,9 +18,13 @@ Top-of-page stats.
   "ytd_pnl": 12044.20,
   "ytd_pct": 0.0699,
   "inception_pnl": 34120.88,
-  "inception_pct": 0.2271
+  "inception_pct": 0.2271,
+  "dividend_income_ytd": 412.30,
+  "dividend_income_total": 2104.75
 }
 ```
+
+`daily_pnl` / `ytd_pnl` / `inception_pnl` are `null` until the matching historical `fund_snapshots` row exists. `dividend_income_*` are summed directly from `cash_transactions` where `kind='dividend'`.
 
 ## `GET /api/portfolio/performance?range=1D|1M|3M|6M|YTD|1Y|ALL`
 
@@ -66,24 +70,26 @@ Pie chart data.
 
 ## `GET /api/portfolio/positions`
 
-All current positions (closed positions excluded by default; pass `?include=closed` to include them).
+One row per ticker. All buy lots are aggregated; `avg_cost_basis` is the weighted cost basis across remaining shares after FIFO-allocating sells. Fully-sold tickers are excluded by default; pass `?include=closed` to include them.
 
 ```json
 [
   {
-    "id": "8b9...",
     "ticker": "AAPL",
     "name": "Apple Inc.",
     "committee": { "id": "tech", "name": "Technology" },
-    "shares": 12,
-    "cost_basis": 142.10,
-    "purchased_at": "2024-09-17",
+    "shares_remaining": 18,
+    "avg_cost_basis": 145.50,
     "current_price": 198.44,
-    "market_value": 2381.28,
-    "unrealized_pnl": 676.08,
-    "unrealized_pct": 0.3964,
-    "weight": 0.0129,
-    "as_of": "2026-04-22"
+    "market_value": 3571.92,
+    "unrealized_pnl": 952.92,
+    "unrealized_pct": 0.3639,
+    "realized_pnl": 120.00,
+    "weight": 0.0195,
+    "lots": [
+      { "id": "8b9...", "shares": 12, "cost_basis": 142.10, "purchased_at": "2024-09-17", "remaining_shares": 10, "realized_pnl": 120.00 },
+      { "id": "1c3...", "shares": 8,  "cost_basis": 150.60, "purchased_at": "2025-03-04", "remaining_shares": 8,  "realized_pnl": 0 }
+    ]
   }
 ]
 ```

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { latestPricesFor } from "@/lib/queries/latest-prices";
+import { getPositions } from "@/lib/portfolio/positions";
 
 export const revalidate = 60;
 
@@ -13,98 +13,83 @@ export async function GET(
 
   const supabase = await createClient();
 
-  const [positionsRes, committeesRes, snapshotRes] = await Promise.all([
-    supabase
-      .from("positions")
-      .select(
-        "id, ticker, name, committee_id, shares, cost_basis, purchased_at, thesis, closed_at, close_price",
-      )
-      .eq("ticker", ticker)
-      .order("purchased_at", { ascending: true }),
-    supabase.from("committees").select("id, name"),
-    supabase
-      .from("price_snapshots")
-      .select(
-        "snapshot_date, market_cap, enterprise_value, pe_ratio, eps, dividend_yield, sector, industry",
-      )
-      .eq("ticker", ticker)
-      .order("snapshot_date", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  let all;
+  try {
+    all = await getPositions(supabase, { includeClosed: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    return NextResponse.json(
+      { error: "positions_failed", message },
+      { status: 500 },
+    );
+  }
 
-  if (positionsRes.error) return fail("positions_query_failed", positionsRes.error.message);
-  if (committeesRes.error) return fail("committees_query_failed", committeesRes.error.message);
-  if (positionsRes.data.length === 0) {
+  const position = all.find((p) => p.ticker === ticker);
+  if (!position) {
     return NextResponse.json(
       { error: "unknown_ticker", message: `No position found for ticker ${ticker}` },
       { status: 404 },
     );
   }
 
-  const committeesById = new Map(committeesRes.data.map((c) => [c.id, c]));
-  const prices = await latestPricesFor(supabase, [ticker]);
-  const currentPrice = prices.get(ticker) ?? null;
+  const { data: snapshot } = await supabase
+    .from("price_snapshots")
+    .select(
+      "snapshot_date, market_cap, enterprise_value, pe_ratio, eps, dividend_yield, sector, industry",
+    )
+    .eq("ticker", ticker)
+    .order("snapshot_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const lots = positionsRes.data.map((p) => {
-    const marketValue =
-      p.closed_at !== null || currentPrice === null ? null : p.shares * currentPrice;
-    const unrealizedPnl =
-      p.closed_at !== null || currentPrice === null
-        ? null
-        : (currentPrice - p.cost_basis) * p.shares;
-    const unrealizedPct =
-      p.closed_at !== null || currentPrice === null || p.cost_basis === 0
-        ? null
-        : (currentPrice - p.cost_basis) / p.cost_basis;
-    const realizedPnl =
-      p.closed_at !== null && p.close_price !== null
-        ? (p.close_price - p.cost_basis) * p.shares
-        : null;
+  const { data: trades } = await supabase
+    .from("trades")
+    .select("shares, price, traded_at, note")
+    .eq("ticker", ticker)
+    .order("traded_at", { ascending: true });
 
-    return {
-      id: p.id,
-      committee: committeesById.get(p.committee_id) ?? null,
-      shares: p.shares,
-      cost_basis: p.cost_basis,
-      purchased_at: p.purchased_at,
-      thesis: p.thesis,
-      closed_at: p.closed_at,
-      close_price: p.close_price,
-      market_value: marketValue === null ? null : round2(marketValue),
-      unrealized_pnl: unrealizedPnl === null ? null : round2(unrealizedPnl),
-      unrealized_pct: unrealizedPct,
-      realized_pnl: realizedPnl === null ? null : round2(realizedPnl),
-    };
-  });
+  const { data: dividends } = await supabase
+    .from("cash_transactions")
+    .select("amount, occurred_at, note")
+    .eq("ticker", ticker)
+    .eq("kind", "dividend")
+    .order("occurred_at", { ascending: true });
 
   return NextResponse.json(
     {
-      ticker,
-      name: positionsRes.data[0].name,
-      current_price: currentPrice,
-      lots,
-      fundamentals: snapshotRes.data
+      ticker: position.ticker,
+      name: position.name,
+      committee: position.committee,
+      shares_remaining: position.shares_remaining,
+      avg_cost_basis: position.avg_cost_basis,
+      current_price: position.current_price,
+      market_value: position.market_value,
+      unrealized_pnl: position.unrealized_pnl,
+      unrealized_pct: position.unrealized_pct,
+      realized_pnl: position.realized_pnl,
+      lots: position.lots.map((l) => ({
+        id: l.id,
+        shares: l.shares,
+        cost_basis: l.cost_basis,
+        purchased_at: l.purchased_at,
+        remaining_shares: l.remaining_shares,
+        realized_pnl: l.realized_pnl,
+      })),
+      trades: trades ?? [],
+      dividends: dividends ?? [],
+      fundamentals: snapshot
         ? {
-            market_cap: snapshotRes.data.market_cap,
-            enterprise_value: snapshotRes.data.enterprise_value,
-            pe_ratio: snapshotRes.data.pe_ratio,
-            eps: snapshotRes.data.eps,
-            dividend_yield: snapshotRes.data.dividend_yield,
-            sector: snapshotRes.data.sector,
-            industry: snapshotRes.data.industry,
-            as_of: snapshotRes.data.snapshot_date,
+            market_cap: snapshot.market_cap,
+            enterprise_value: snapshot.enterprise_value,
+            pe_ratio: snapshot.pe_ratio,
+            eps: snapshot.eps,
+            dividend_yield: snapshot.dividend_yield,
+            sector: snapshot.sector,
+            industry: snapshot.industry,
+            as_of: snapshot.snapshot_date,
           }
         : null,
     },
     { headers: { "Access-Control-Allow-Origin": "*" } },
   );
-}
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
-
-function fail(code: string, message: string) {
-  return NextResponse.json({ error: code, message }, { status: 500 });
 }

@@ -1,28 +1,22 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ClosePositionButton } from "./close-position-button";
+import { getPositions } from "@/lib/portfolio/positions";
+import { SellSharesButton } from "./sell-shares-button";
 
 export default async function AdminHome() {
   const supabase = await createClient();
 
-  const [positionsRes, committeesRes] = await Promise.all([
-    supabase
-      .from("positions")
-      .select(
-        "id, ticker, name, committee_id, shares, cost_basis, purchased_at, closed_at, close_price",
-      )
-      .order("closed_at", { ascending: true, nullsFirst: true })
-      .order("purchased_at", { ascending: false }),
-    supabase.from("committees").select("id, name"),
-  ]);
+  const positions = await getPositions(supabase, { includeClosed: true });
+  const open = positions.filter((p) => p.shares_remaining > 0);
+  const closed = positions.filter((p) => p.shares_remaining === 0);
 
-  const positions = positionsRes.data ?? [];
-  const committeesById = new Map(
-    (committeesRes.data ?? []).map((c) => [c.id, c.name]),
-  );
-
-  const open = positions.filter((p) => p.closed_at === null);
-  const closed = positions.filter((p) => p.closed_at !== null);
+  const { data: cashRows } = await supabase
+    .from("cash_transactions")
+    .select("amount, kind");
+  const cash = (cashRows ?? []).reduce((sum, r) => sum + r.amount, 0);
+  const dividendTotal = (cashRows ?? [])
+    .filter((r) => r.kind === "dividend")
+    .reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <div className="space-y-10">
@@ -30,7 +24,7 @@ export default async function AdminHome() {
         <div>
           <h1 className="text-2xl font-semibold">Portfolio admin</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Add or close positions. Changes propagate to the public dashboard and API on the next tick.
+            Cash balance {fmt(cash)} &middot; Dividends total {fmt(dividendTotal)}
           </p>
         </div>
         <Link
@@ -46,49 +40,29 @@ export default async function AdminHome() {
           Open positions ({open.length})
         </h2>
         {open.length === 0 ? (
-          <EmptyHint>No open positions yet. Click <em>Add position</em> to log the first one.</EmptyHint>
+          <EmptyHint>
+            No open positions yet. Click <em>Add position</em> to log the first buy.
+          </EmptyHint>
         ) : (
-          <PositionTable
-            rows={open}
-            committeesById={committeesById}
-            closable
-          />
+          <PositionTable rows={open} closable />
         )}
       </section>
 
       {closed.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Closed positions ({closed.length})
+            Closed ({closed.length})
           </h2>
-          <PositionTable rows={closed} committeesById={committeesById} closable={false} />
+          <PositionTable rows={closed} closable={false} />
         </section>
       )}
     </div>
   );
 }
 
-type PositionRow = {
-  id: string;
-  ticker: string;
-  name: string;
-  committee_id: string;
-  shares: number;
-  cost_basis: number;
-  purchased_at: string;
-  closed_at: string | null;
-  close_price: number | null;
-};
+type Row = Awaited<ReturnType<typeof getPositions>>[number];
 
-function PositionTable({
-  rows,
-  committeesById,
-  closable,
-}: {
-  rows: PositionRow[];
-  committeesById: Map<string, string>;
-  closable: boolean;
-}) {
+function PositionTable({ rows, closable }: { rows: Row[]; closable: boolean }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
       <table className="min-w-full text-sm">
@@ -98,42 +72,47 @@ function PositionTable({
             <th className="px-4 py-2 font-medium">Name</th>
             <th className="px-4 py-2 font-medium">Committee</th>
             <th className="px-4 py-2 text-right font-medium">Shares</th>
-            <th className="px-4 py-2 text-right font-medium">Cost basis</th>
-            <th className="px-4 py-2 font-medium">Purchased</th>
-            {closable ? (
-              <th className="px-4 py-2 font-medium">Close</th>
-            ) : (
-              <>
-                <th className="px-4 py-2 font-medium">Closed</th>
-                <th className="px-4 py-2 text-right font-medium">Close price</th>
-              </>
-            )}
+            <th className="px-4 py-2 text-right font-medium">Avg cost</th>
+            <th className="px-4 py-2 text-right font-medium">Current</th>
+            <th className="px-4 py-2 text-right font-medium">Market value</th>
+            <th className="px-4 py-2 text-right font-medium">Unrealized</th>
+            <th className="px-4 py-2 text-right font-medium">Realized</th>
+            {closable && <th className="px-4 py-2 font-medium">Sell</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((p) => (
-            <tr key={p.id}>
+            <tr key={p.ticker}>
               <td className="px-4 py-2 font-medium">{p.ticker}</td>
               <td className="px-4 py-2 text-gray-700">{p.name}</td>
               <td className="px-4 py-2 text-gray-700">
-                {committeesById.get(p.committee_id) ?? p.committee_id}
+                {p.committee?.name ?? "—"}
               </td>
-              <td className="px-4 py-2 text-right tabular-nums">{p.shares}</td>
               <td className="px-4 py-2 text-right tabular-nums">
-                ${p.cost_basis.toFixed(2)}
+                {p.shares_remaining}
               </td>
-              <td className="px-4 py-2 text-gray-700">{p.purchased_at}</td>
-              {closable ? (
+              <td className="px-4 py-2 text-right tabular-nums">
+                {p.avg_cost_basis !== null ? `$${p.avg_cost_basis.toFixed(2)}` : "—"}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums">
+                {p.current_price !== null ? `$${p.current_price.toFixed(2)}` : "—"}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums">
+                {p.market_value !== null ? fmt(p.market_value) : "—"}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums">
+                {p.unrealized_pnl !== null ? fmtSigned(p.unrealized_pnl) : "—"}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums">
+                {p.realized_pnl !== 0 ? fmtSigned(p.realized_pnl) : "—"}
+              </td>
+              {closable && (
                 <td className="px-4 py-2">
-                  <ClosePositionButton id={p.id} ticker={p.ticker} />
+                  <SellSharesButton
+                    ticker={p.ticker}
+                    maxShares={p.shares_remaining}
+                  />
                 </td>
-              ) : (
-                <>
-                  <td className="px-4 py-2 text-gray-700">{p.closed_at}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {p.close_price !== null ? `$${p.close_price.toFixed(2)}` : "—"}
-                  </td>
-                </>
               )}
             </tr>
           ))}
@@ -149,4 +128,20 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+function fmt(n: number): string {
+  const sign = n < 0 ? "-" : "";
+  return `${sign}$${Math.abs(n).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function fmtSigned(n: number): string {
+  const sign = n >= 0 ? "+" : "-";
+  return `${sign}$${Math.abs(n).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
