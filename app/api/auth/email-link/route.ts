@@ -5,15 +5,18 @@ import { isConfigured as resendConfigured, sendEmail } from "@/lib/email/resend"
 // Public self-serve sign-in. Replaces Supabase's default-SMTP magic-link
 // flow (which is rate-limited, routinely blocked by .edu MX, and gives
 // no delivery signal). We generate the link server-side with the
-// service-role key, then either:
-//   - mail it via Resend (preferred), or
-//   - hand it back to the submitter so they can open it in their browser.
+// service-role key, then deliver it over email via Resend.
 //
-// Returning the URL to the same client that just typed its own email is
-// equivalent to the existing /admin/team invite UX — the link is
-// exactly what the person would have received over email. New accounts
-// land as viewers via the `on_auth_user_created` trigger; role upgrades
-// are an explicit admin action elsewhere.
+// The link MUST only reach the address being signed into — never the
+// caller. Returning it to the anonymous HTTP caller would let anyone
+// produce a valid session cookie for any email they type (admin
+// takeover for known addresses, phantom viewer accounts for
+// arbitrary mailboxes). When Resend isn't configured or delivery
+// fails, fail closed with 503 so the operator sees it during setup.
+// The /admin/team invite UI is gated by requireAdmin() and legitimately
+// hands the URL to the admin who can then forward it out-of-band; the
+// CLI script scripts/admin-link.mjs is the supported bootstrap path
+// when no Resend account exists yet.
 
 const BodySchema = z.object({
   email: z.string().email().trim().toLowerCase(),
@@ -83,15 +86,23 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!resendConfigured()) {
+    // Fail closed: see the file header. Without email delivery we have
+    // no channel that proves the caller controls this mailbox.
+    return NextResponse.json(
+      {
+        error:
+          "Email delivery is not configured on this deployment. Ask an admin to invite you from /admin/team, or use the npm run admin-link CLI.",
+      },
+      { status: 503 },
+    );
+  }
+
   const confirmUrl = new URL(`${appOrigin}/auth/confirm`);
   confirmUrl.searchParams.set("token_hash", hashedToken);
   confirmUrl.searchParams.set("type", "magiclink");
   confirmUrl.searchParams.set("next", "/admin");
   const url = confirmUrl.toString();
-
-  if (!resendConfigured()) {
-    return NextResponse.json({ ok: true, delivery: "manual", url });
-  }
 
   try {
     await sendEmail({
@@ -101,10 +112,13 @@ export async function POST(request: Request) {
       html: htmlBody(url),
     });
   } catch (err) {
-    // Fall back to manual so the user isn't stranded. Don't leak the
-    // provider error string — log it server-side instead.
+    // Don't leak the provider error to the client or downgrade to
+    // inline delivery. Server-side log only.
     console.error("resend send failed:", err);
-    return NextResponse.json({ ok: true, delivery: "manual", url });
+    return NextResponse.json(
+      { error: "Couldn't send the sign-in email. Try again in a minute." },
+      { status: 502 },
+    );
   }
 
   return NextResponse.json({ ok: true, delivery: "email" });

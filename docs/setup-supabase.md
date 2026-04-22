@@ -68,13 +68,13 @@ When deploying to Vercel, set the same three Supabase env vars in **Project Sett
 - `ALPHA_VANTAGE_API_KEY` — fallback, from [Alpha Vantage](https://www.alphavantage.co).
 - `CRON_SECRET` — generate with `openssl rand -hex 32`. Same value goes into the GitHub Actions repo secret.
 
-## 7. Configure email delivery (Resend)
+## 7. Configure email delivery (Resend — required for self-serve login)
 
-Supabase's built-in SMTP is unreliable: it rate-limits at a few emails per hour on a shared sender that's often blocked by `.edu` domains, and gives you no delivery feedback. We bypass it entirely — `/admin/login` calls `/api/auth/email-link`, which generates the magic link server-side with the service-role key and sends it through **Resend**.
+Supabase's built-in SMTP is unreliable: rate-limited, often blocked by `.edu` domains, no delivery signal. We bypass it entirely — `/admin/login` calls `/api/auth/email-link`, which generates the magic link server-side with the service-role key and delivers it through **Resend**.
 
-> **Until Resend is configured, the login form still works — it just shows the sign-in link inline** on the page for the submitter to paste into their browser. No emails, but nobody is blocked. Same UX as the `/admin/team` invite flow. Turn on Resend to get real email delivery.
+> **Until Resend is configured, the `/admin/login` self-serve flow is disabled** (returns 503 "Email delivery is not configured"). This is intentional: handing back the sign-in URL in the HTTP response would let anyone type an admin's email and receive a working session cookie. Use `/admin/team` invites (gated to admins) or `npm run admin-link` (local CLI) to get people in until email delivery is set up.
 
-Free tier covers 3,000 emails/month and 100/day, which is more than CIMG needs.
+Free tier covers 3,000 emails/month and 100/day — more than CIMG needs.
 
 1. **Sign up** at [resend.com](https://resend.com) — free, no credit card.
 2. **Pick a sender:**
@@ -92,15 +92,15 @@ Free tier covers 3,000 emails/month and 100/day, which is more than CIMG needs.
 
    Mirror the same two variables into Vercel → **Project Settings → Environment Variables** for production.
 5. **Restart the dev server** (`Ctrl+C`, `npm run dev`) so Next.js picks up the new env. Rebuild before redeploying to Vercel.
-6. **Test** at `/admin/login`: enter your email, submit. You should see "Check your email" and receive the sign-in link within a few seconds. If the form shows the link inline instead, the env vars aren't being read — double-check the file and the restart.
+6. **Test** at `/admin/login`: enter your email, submit. You should see "Check your email" and receive the sign-in link within a few seconds. If the form returns a 503 "Email delivery is not configured", the env vars aren't being read — double-check the file and the restart.
 
-While you're waiting to verify a domain, `npm run admin-link -- you@example.com --admin` still works as the fastest bootstrap path.
+While you're waiting to verify a domain, `npm run admin-link -- you@example.com --admin` still works as the fastest bootstrap path and doesn't depend on Resend at all.
 
 ## Troubleshooting
 
 - **`PGRST125: Invalid path specified in request URL`** — `NEXT_PUBLIC_SUPABASE_URL` has `/rest/v1` or a trailing slash. Trim it to just `https://<ref>.supabase.co`.
 - **`/admin/login` says "Check your email" but nothing arrives** — Resend accepted the send but delivery is failing (bounced, filtered, or the sender domain isn't verified). Check Resend → **Logs** for the specific error. As a temporary unblock, `npm run admin-link -- email@example.com --admin` prints a paste-able sign-in URL.
-- **`/admin/login` shows the link inline instead of sending email** — `RESEND_API_KEY` or `RESEND_FROM` isn't set in the server env. Copy both into `.env.local` (and Vercel), then restart.
+- **`/admin/login` returns 503 "Email delivery is not configured"** — `RESEND_API_KEY` or `RESEND_FROM` isn't set in the server env. Copy both into `.env.local` (and Vercel), then restart. Do *not* try to re-enable the old inline-link fallback; it was removed because it let anonymous callers generate session cookies for arbitrary emails.
 - **Magic link opens but lands on the home page logged out** — `redirect_to` is pointing at `/` instead of `/auth/callback`. The Site URL alone isn't enough; add `/auth/callback` explicitly under Redirect URLs.
 - **New user didn't get a `profiles` row** — confirm the `on_auth_user_created` trigger exists (Database → Triggers).
 - **RLS blocking a query in dev** — you're probably hitting it with the anon key when you need the service role; double-check you're in a server route handler and that it's an admin-only path.
