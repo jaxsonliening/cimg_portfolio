@@ -76,9 +76,9 @@ function PortfolioHead() {
       <Th>Name</Th>
       <Th>Committee</Th>
       <Th right>Shares</Th>
-      <Th right>Avg cost</Th>
+      <Th right>Avg Cost</Th>
       <Th right>Current</Th>
-      <Th right>Market value</Th>
+      <Th right>Market Value</Th>
       <Th right>Unrealized</Th>
       <Th right>Realized</Th>
       <Th right>Weight</Th>
@@ -126,11 +126,11 @@ function FundamentalsHead() {
   return (
     <tr>
       <Th>Ticker</Th>
-      <Th right>Market cap</Th>
-      <Th right>Enterprise value</Th>
+      <Th right>Market Cap</Th>
+      <Th right>Enterprise Value</Th>
       <Th right>P/E</Th>
       <Th right>EPS</Th>
-      <Th right>Div yield</Th>
+      <Th right>Div Yield</Th>
       <Th>Sector</Th>
     </tr>
   );

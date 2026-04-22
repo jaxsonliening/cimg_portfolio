@@ -19,9 +19,9 @@ export default async function NewPositionPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Add position</h1>
+        <h1 className="text-2xl font-semibold">Add Position</h1>
         <Link href="/admin" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
-          ← Back to admin
+          ← Back to Admin
         </Link>
       </div>
       <AddPositionForm

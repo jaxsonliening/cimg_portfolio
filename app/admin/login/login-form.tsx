@@ -36,9 +36,9 @@ export function LoginForm() {
 
   return (
     <main className="mx-auto mt-16 max-w-md p-6">
-      <h1 className="text-2xl font-semibold">Admin sign in</h1>
+      <h1 className="text-2xl font-semibold">Admin Sign In</h1>
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Magic-link sign in for the CIMG Portfolio Manager.
+        Magic-link sign-in for the CIMG Portfolio Manager.
       </p>
 
       {unauthorized && (
@@ -75,7 +75,7 @@ export function LoginForm() {
             disabled={status === "sending"}
             className="w-full rounded-md bg-gray-900 dark:bg-gray-100 px-4 py-2 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50"
           >
-            {status === "sending" ? "Sending…" : "Send magic link"}
+            {status === "sending" ? "Sending…" : "Send Magic Link"}
           </button>
           {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
         </form>

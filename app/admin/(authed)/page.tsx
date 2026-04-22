@@ -22,7 +22,7 @@ export default async function AdminHome() {
     <div className="space-y-10">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Portfolio admin</h1>
+          <h1 className="text-2xl font-semibold">Portfolio Admin</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Cash balance {fmt(cash)} &middot; Dividends total {fmt(dividendTotal)}
           </p>
@@ -32,24 +32,24 @@ export default async function AdminHome() {
             href="/admin/cash"
             className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            Cash &amp; dividends
+            Cash &amp; Dividends
           </Link>
           <Link
             href="/admin/positions/new"
             className="rounded-md bg-gray-900 dark:bg-gray-100 px-3 py-2 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
           >
-            + Add position
+            + Add Position
           </Link>
         </div>
       </div>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Open positions ({open.length})
+          Open Positions ({open.length})
         </h2>
         {open.length === 0 ? (
           <EmptyHint>
-            No open positions yet. Click <em>Add position</em> to log the first buy.
+            No open positions yet. Click <em>Add Position</em> to log the first buy.
           </EmptyHint>
         ) : (
           <PositionTable rows={open} closable />
@@ -80,9 +80,9 @@ function PositionTable({ rows, closable }: { rows: Row[]; closable: boolean }) {
             <th className="px-4 py-2 font-medium">Name</th>
             <th className="px-4 py-2 font-medium">Committee</th>
             <th className="px-4 py-2 text-right font-medium">Shares</th>
-            <th className="px-4 py-2 text-right font-medium">Avg cost</th>
+            <th className="px-4 py-2 text-right font-medium">Avg Cost</th>
             <th className="px-4 py-2 text-right font-medium">Current</th>
-            <th className="px-4 py-2 text-right font-medium">Market value</th>
+            <th className="px-4 py-2 text-right font-medium">Market Value</th>
             <th className="px-4 py-2 text-right font-medium">Unrealized</th>
             <th className="px-4 py-2 text-right font-medium">Realized</th>
             {closable && <th className="px-4 py-2 font-medium">Sell</th>}

@@ -30,20 +30,20 @@ export default async function CashAdminPage() {
     <div className="space-y-10">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Cash &amp; dividends</h1>
+          <h1 className="text-2xl font-semibold">Cash &amp; Dividends</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Recent balance {fmt(balance)} &middot; Dividend income YTD {fmt(dividendYtd)}
           </p>
         </div>
         <Link href="/admin" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700">
-          ← Back to admin
+          ← Back to Admin
         </Link>
       </div>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            New transaction
+            New Transaction
           </h2>
           <CashForm tickers={tickers} />
         </div>

@@ -54,7 +54,7 @@ export function TeamClient() {
                 <tr>
                   <th className="px-4 py-2 font-medium">Email</th>
                   <th className="px-4 py-2 font-medium">Role</th>
-                  <th className="px-4 py-2 font-medium">Last sign-in</th>
+                  <th className="px-4 py-2 font-medium">Last Sign-In</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -164,7 +164,7 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
   return (
     <section className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Invite someone
+        Invite Someone
       </h2>
       <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
         <label className="flex-1 min-w-64">
@@ -194,7 +194,7 @@ function InviteCard({ onInvited }: { onInvited: () => void }) {
           disabled={sending}
           className="rounded-md bg-gray-900 dark:bg-gray-100 px-4 py-2 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50"
         >
-          {sending ? "Generating…" : "Generate sign-in link"}
+          {sending ? "Generating…" : "Generate Sign-In Link"}
         </button>
       </form>
 

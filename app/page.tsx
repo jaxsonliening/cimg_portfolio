@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPortfolioSummary } from "@/lib/portfolio/summary";
 import { getCommitteeAllocations } from "@/lib/portfolio/committees";
@@ -46,12 +47,20 @@ export default async function Home() {
             Updated every 15 minutes during market hours. As of {summary.as_of}.
           </p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin"
+            className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Admin Sign In
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
 
       <section className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
-          label="Total value"
+          label="Total Value"
           primary={fmtCurrency(summary.total_value)}
           secondary={summary.cash !== 0 ? `${fmtCurrency(summary.cash)} cash` : undefined}
         />
@@ -68,7 +77,7 @@ export default async function Home() {
           tone={tone(summary.ytd_pnl)}
         />
         <StatCard
-          label="Since inception"
+          label="Since Inception"
           primary={
             summary.inception_pnl === null ? "—" : fmtSigned(summary.inception_pnl)
           }
@@ -100,7 +109,7 @@ export default async function Home() {
 
       <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 text-lg font-medium">Committee allocation</h2>
+          <h2 className="mb-4 text-lg font-medium">Committee Allocation</h2>
           <CommitteePie data={committees} />
         </div>
         <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 lg:col-span-2">
