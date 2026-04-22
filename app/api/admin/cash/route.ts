@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 // the positions and trades endpoints, not here.
 const AdminKind = z.enum([
   "deposit",
+  "capital_injection",
   "withdrawal",
   "dividend",
   "fee",
@@ -35,6 +36,9 @@ const CreateCashSchema = z
     }
     if (data.kind === "deposit" && data.amount <= 0) {
       ctx.addIssue({ code: "custom", message: "deposit must be positive", path: ["amount"] });
+    }
+    if (data.kind === "capital_injection" && data.amount <= 0) {
+      ctx.addIssue({ code: "custom", message: "capital injection must be positive", path: ["amount"] });
     }
     if (data.kind === "withdrawal" && data.amount >= 0) {
       ctx.addIssue({ code: "custom", message: "withdrawal must be negative", path: ["amount"] });
