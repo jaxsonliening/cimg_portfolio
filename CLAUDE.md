@@ -149,12 +149,15 @@ Admin-only (`POST/PATCH/DELETE`) endpoints live under `/api/admin/*` and require
 - [x] Scaffold Next.js 16 app + Tailwind + Supabase clients + proxy
 - [x] Schema + auth trigger + DB types + setup guide (`docs/setup-supabase.md`)
 - [x] Magic-link login + admin auth gate (`/admin/login`, `/auth/callback`, `/admin`)
-- [x] First API endpoint: `GET /api/portfolio/committees` + `latestPricesFor` helper + `computeCommitteeAllocations` calc
-- [ ] Provision Supabase project, run `supabase/schema.sql`, seed 7 committees *(manual step)*
-- [ ] Remaining public API: `/summary`, `/performance`, `/positions`, `/positions/:ticker`
-- [ ] Admin CRUD for positions (add / close / edit cash)
-- [ ] Wire the dashboard UI to the real API (summary cards, chart, pie, positions table)
-- [ ] Cron handlers: `/api/cron/tick`, `/api/cron/daily`
+- [x] Public API: `/summary`, `/performance`, `/committees`, `/positions`, `/positions/:ticker`
+- [x] Shared query layer in `lib/portfolio/` (summary/committees/positions) so the dashboard and API share one source of truth
+- [x] Admin CRUD for positions (`POST /api/admin/positions`, `PATCH .../:id` close) + inline UI
+- [x] Cron handlers: `/api/cron/tick`, `/api/cron/daily` (FMP client, market-hours check, service-role writes)
+- [x] Dashboard UI wired to real data — summary cards, performance chart with range toggle, committee pie, positions table with portfolio/fundamentals toggle
+- [ ] Provision Supabase project, run `supabase/schema.sql`, seed 7 committees *(manual step — see `docs/setup-supabase.md`)*
+- [ ] Configure GitHub repo secrets `APP_URL` + `CRON_SECRET` and Vercel env vars *(manual step)*
+- [ ] Backfill inception history from CSV once the owner provides it
+- [ ] Vitest coverage for `lib/calc/` (committee allocations, intraday fund series) before first deploy
 - [ ] Build admin CRUD for positions
 - [ ] GitHub Actions: 15-min intraday ticks + daily fundamentals snapshot
 - [ ] Tick retention job (prune `price_ticks` older than 30 days)
