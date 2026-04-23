@@ -1,4 +1,11 @@
-const FMP_BASE = "https://financialmodelingprep.com/api/v3";
+// Thin FMP client against the /stable/ API surface. The legacy
+// /api/v3/quote and /api/v3/profile endpoints were retired after
+// Aug 31, 2025 and now return 403 "Legacy Endpoint" errors. The
+// replacement endpoints keep the same response field names; only
+// the path and the symbol argument style change (comma-list under
+// `?symbol=` instead of a URL path segment).
+
+const FMP_BASE = "https://financialmodelingprep.com/stable";
 
 export type FmpQuote = {
   symbol: string;
@@ -46,9 +53,11 @@ function apiKey(): string {
 
 export async function fetchQuotes(tickers: string[]): Promise<FmpQuote[]> {
   if (tickers.length === 0) return [];
-  const url = `${FMP_BASE}/quote/${tickers.join(",")}?apikey=${apiKey()}`;
+  const url = `${FMP_BASE}/quote?symbol=${tickers.join(",")}&apikey=${apiKey()}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`FMP quote ${res.status}: ${await res.text().catch(() => "")}`);
+  if (!res.ok) {
+    throw new Error(`FMP quote ${res.status}: ${await res.text().catch(() => "")}`);
+  }
   const data: RawQuote[] = await res.json();
 
   return data
@@ -66,9 +75,11 @@ export async function fetchQuotes(tickers: string[]): Promise<FmpQuote[]> {
 
 export async function fetchProfiles(tickers: string[]): Promise<FmpProfile[]> {
   if (tickers.length === 0) return [];
-  const url = `${FMP_BASE}/profile/${tickers.join(",")}?apikey=${apiKey()}`;
+  const url = `${FMP_BASE}/profile?symbol=${tickers.join(",")}&apikey=${apiKey()}`;
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`FMP profile ${res.status}: ${await res.text().catch(() => "")}`);
+  if (!res.ok) {
+    throw new Error(`FMP profile ${res.status}: ${await res.text().catch(() => "")}`);
+  }
   const data: RawProfile[] = await res.json();
 
   return data
