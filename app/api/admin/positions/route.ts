@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const CreatePositionSchema = z.object({
   ticker: z
@@ -19,19 +20,11 @@ const CreatePositionSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  let caller: { userId: string };
+  try {
+    caller = await requireAdmin();
+  } catch (res) {
+    return res as Response;
   }
 
   let body: unknown;
@@ -52,7 +45,8 @@ export async function POST(request: Request) {
   // Insert the lot first, then the matching cash outflow. If the cash
   // insert fails, delete the lot so the two stay consistent — Supabase
   // doesn't give us multi-table transactions through the REST client.
-  const { data: inserted, error: insertError } = await supabase
+  const admin = createAdminClient();
+  const { data: inserted, error: insertError } = await admin
     .from("positions")
     .insert({
       ticker: parsed.data.ticker,
@@ -62,7 +56,7 @@ export async function POST(request: Request) {
       cost_basis: parsed.data.cost_basis,
       purchased_at: parsed.data.purchased_at,
       thesis: parsed.data.thesis,
-      created_by: user.id,
+      created_by: caller.userId,
     })
     .select("id")
     .single();
@@ -73,16 +67,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: cashError } = await supabase.from("cash_transactions").insert({
+  const { error: cashError } = await admin.from("cash_transactions").insert({
     amount: -(parsed.data.shares * parsed.data.cost_basis),
     kind: "trade_buy",
     ticker: parsed.data.ticker,
     occurred_at: parsed.data.purchased_at,
     note: `Buy ${parsed.data.shares} ${parsed.data.ticker} @ ${parsed.data.cost_basis}`,
-    created_by: user.id,
+    created_by: caller.userId,
   });
   if (cashError) {
-    await supabase.from("positions").delete().eq("id", inserted.id);
+    await admin.from("positions").delete().eq("id", inserted.id);
     return NextResponse.json(
       { error: "cash_insert_failed", message: cashError.message },
       { status: 500 },
