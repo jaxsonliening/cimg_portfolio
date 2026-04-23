@@ -11,7 +11,12 @@
 // preserved (fetchQuotes, fetchFullQuotes, fetchProfiles, FmpQuote,
 // FmpProfile) so every existing import keeps working.
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+
+// v3 requires instantiation (see yahoo-finance2 UPGRADING.md). One
+// module-level instance is reused across every cron fire since
+// serverless function warm-starts keep it in memory.
+const yahooFinance = new YahooFinance();
 
 export type FmpQuote = {
   symbol: string;
