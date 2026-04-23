@@ -4,6 +4,7 @@ import { getSummary } from "@/lib/portfolio/summary";
 import { getPositions } from "@/lib/portfolio/positions";
 import { getWinnersLosers } from "@/lib/portfolio/winners-losers";
 import { getCommitteeAllocations } from "@/lib/portfolio/committees";
+import { getDividendSummary } from "@/lib/portfolio/dividends";
 import { CommitteePie } from "@/components/committee-pie";
 import { PerformanceChart } from "@/components/performance-chart";
 import { PositionsTable } from "@/components/positions-table";
@@ -13,17 +14,19 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportAllButton } from "@/components/export-all-button";
 import { RiskMetricsPanel } from "@/components/risk-metrics-panel";
 import { AttributionPanel } from "@/components/attribution-panel";
+import { DividendPanel } from "@/components/dividend-panel";
 
 export const revalidate = 60;
 
 export default async function Home() {
   const supabase = await createClient();
 
-  const [summary, positions, moves, committees] = await Promise.all([
+  const [summary, positions, moves, committees, dividends] = await Promise.all([
     getSummary(supabase),
     getPositions(supabase),
     getWinnersLosers(supabase),
     getCommitteeAllocations(supabase),
+    getDividendSummary(supabase),
   ]);
 
   return (
@@ -68,6 +71,10 @@ export default async function Home() {
 
       <section className="mb-8">
         <AttributionPanel positions={positions} summary={summary} />
+      </section>
+
+      <section className="mb-8">
+        <DividendPanel summary={dividends} />
       </section>
 
       <section className="mb-8 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
