@@ -14,6 +14,7 @@
     "admin-link": "node --env-file=.env.local scripts/admin-link.mjs",
     "fetch-now": "node --env-file=.env.local scripts/fetch-prices.mjs",
     "backfill-prices": "node --env-file=.env.local scripts/backfill-prices.mjs",
+    "reconstruct-history": "node --env-file=.env.local scripts/reconstruct-history.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -1,0 +1,55 @@
+# CIMG transactions 2024-04-02 through 2026-04-13.
+# Date format: YYYY-MM-DD.
+# Action: buy | sell. "Trim" and "ADD" collapsed into sell / buy.
+# Shares: magnitude (always positive). The action column carries the sign.
+# DNI / ATW rows from the owner's original sheet are research-only and
+# are not transactions — not included here.
+#
+# Columns: date  ticker  action  shares  price
+date	ticker	action	shares	price
+2024-04-02	BN	buy	2532	40.37
+2024-04-15	JBI	sell	4992	14.55
+2024-04-23	OXM	sell	732	108.05
+2024-04-29	MO	buy	3574	43.25
+2024-05-02	HCC	buy	1523	68.41
+2024-05-02	PM	buy	571	96.94
+2024-05-02	DIS	sell	1021	111.46
+2024-10-17	CCI	buy	960	111.89
+2024-10-17	B	sell	2441	46.61
+2024-10-18	KEYS	sell	720	159.13
+2024-10-24	CELH	buy	1744	31.35
+2024-11-05	RMD	sell	106	244.44
+2024-11-05	TSM	sell	206	196.75
+2024-11-05	DAL	sell	1131	58.38
+2024-12-16	FERG	sell	495	187.61
+2024-12-16	OC	buy	571	190.73
+2024-12-17	AKAM	buy	569	97.47
+2024-12-26	MXCT	sell	12970	4.07
+2025-02-06	RMD	sell	449	236.97
+2025-02-12	CROX	buy	311	88.45
+2025-02-20	HCC	buy	755	47.72
+2025-02-21	SIRI	buy	4390	25.00
+2025-04-30	PYPL	buy	1594	64.37
+2025-04-30	TSM	sell	571	163.72
+2025-04-30	SNAP	buy	6168	7.53
+2025-04-30	TDW	buy	759	35.57
+2025-04-30	BCO	buy	1178	89.01
+2025-04-30	META	sell	101	548.39
+2025-04-30	VRTX	sell	221	495.91
+2025-04-30	MO	sell	862	58.26
+2025-09-18	CG	sell	1037	67.57
+2025-10-09	BRK.B	sell	254	498.95
+2025-10-10	VRTX	sell	107	412.26
+2025-10-10	AVTR	sell	3657	13.50
+2025-10-13	MH	buy	9550	12.21
+2025-10-13	MNRO	buy	3572	16.66
+2025-10-13	STZ	buy	814	140.22
+2025-11-07	AKAM	sell	569	85.28
+2025-11-07	MO	sell	633	58.00
+2025-11-24	HCC	sell	780	74.22
+2025-12-08	CCI	sell	960	88.48
+2025-12-08	FLYW	buy	8495	13.57
+2025-12-08	FISV	buy	1792	66.16
+2026-02-27	VAL	sell	638	95.80
+2026-03-02	MGNI	buy	4629	13.45
+2026-04-13	VRSN	buy	221	263.40
