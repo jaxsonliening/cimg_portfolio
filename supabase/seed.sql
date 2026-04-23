@@ -130,14 +130,14 @@ where not exists (select 1 from public.cash_transactions);
 
 -- ---------- capital_injection placeholder ----------
 -- The Excel "Pre / Post Capital Injection" rows split performance
--- around a specific injection event. We don't know the real date —
--- the PM should open /admin/cash and either edit this placeholder
--- or delete it and enter the real injection. Dated 2025-09-01 as a
--- reasonable start-of-year guess.
+-- around a specific injection event. 2020-02-01 is the date the
+-- owner identified as the canonical injection; amount is 0 as a
+-- placeholder so the PM can edit it in /admin/cash when the real
+-- figure is known.
 insert into public.cash_transactions
   (amount, kind, occurred_at, note)
-select 0, 'capital_injection', '2025-09-01',
-       'Placeholder — edit this to the real capital injection date + amount'
+select 0, 'capital_injection', '2020-02-01',
+       'Capital injection anchor date; edit amount in /admin/cash when known'
 where not exists (
   select 1 from public.cash_transactions where kind = 'capital_injection'
 );
