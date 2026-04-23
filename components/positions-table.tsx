@@ -91,9 +91,23 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
   const [view, setView] = useState<View>("portfolio");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [committeeFilter, setCommitteeFilter] = useState<string>("all");
+
+  const committeeOptions = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string }>();
+    for (const p of positions) {
+      if (p.committee) byId.set(p.committee.id, { id: p.committee.id, name: p.committee.name });
+    }
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [positions]);
+
+  const filtered = useMemo(() => {
+    if (committeeFilter === "all") return positions;
+    return positions.filter((p) => p.committee?.id === committeeFilter);
+  }, [positions, committeeFilter]);
 
   const columns = view === "portfolio" ? PORTFOLIO_COLUMNS : FUNDAMENTALS_COLUMNS;
-  const sorted = useMemo(() => sortRows(positions, sortKey, sortDir), [positions, sortKey, sortDir]);
+  const sorted = useMemo(() => sortRows(filtered, sortKey, sortDir), [filtered, sortKey, sortDir]);
 
   function onHeaderClick(key: SortKey) {
     if (key === sortKey) {
@@ -137,6 +151,19 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
           ))}
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={committeeFilter}
+            onChange={(e) => setCommitteeFilter(e.target.value)}
+            className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700"
+            aria-label="Filter by committee"
+          >
+            <option value="all">All Committees</option>
+            {committeeOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
           <p className="text-xs text-gray-400 dark:text-gray-500">
             {sorted.length} holdings
           </p>
