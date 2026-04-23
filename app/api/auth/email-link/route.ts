@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isConfigured as emailConfigured, sendEmail } from "@/lib/email/sendgrid";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 // Public self-serve sign-in. Replaces Supabase's default-SMTP
 // magic-link flow (which is rate-limited and routinely blocked by
@@ -32,6 +33,19 @@ type GenerateLinkResponse = {
 };
 
 export async function POST(request: Request) {
+  // Per-IP and per-email throttles. The public endpoint touches our
+  // SendGrid quota and the target user's inbox; a loose limit here
+  // keeps casual abuse from burning through 100 emails/day or spamming
+  // any one address. Not a substitute for infra-level DDoS protection.
+  const ip = clientIp(request);
+  const ipLimit = rateLimit(`email-link:ip:${ip}`, { limit: 5, windowSec: 60 });
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(ipLimit.retryAfterSec) } },
+    );
+  }
+
   let parsed: z.infer<typeof BodySchema>;
   try {
     parsed = BodySchema.parse(await request.json());
@@ -39,6 +53,17 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "invalid body" },
       { status: 400 },
+    );
+  }
+
+  const emailLimit = rateLimit(`email-link:addr:${parsed.email}`, {
+    limit: 3,
+    windowSec: 300,
+  });
+  if (!emailLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many sign-in requests for that address. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(emailLimit.retryAfterSec) } },
     );
   }
 

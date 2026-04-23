@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSafeNext } from "@/lib/auth/safe-next";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 // Handles sign-in links that carry a `token_hash` — the format returned
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/admin";
+  const next = resolveSafeNext(searchParams.get("next"));
 
   if (token_hash && type) {
     const supabase = await createClient();
