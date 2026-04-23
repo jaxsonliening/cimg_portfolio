@@ -46,7 +46,9 @@ export async function getPositions(
     latestPricesFor(supabase, tickers),
     supabase
       .from("price_snapshots")
-      .select("ticker, snapshot_date, close_price")
+      .select(
+        "ticker, snapshot_date, close_price, market_cap, enterprise_value, pe_ratio, eps, dividend_yield, sector, industry",
+      )
       .in("ticker", tickers)
       .gte("snapshot_date", earliestNeeded)
       .order("snapshot_date", { ascending: true }),
@@ -54,6 +56,47 @@ export async function getPositions(
   if (snapshotsRes.error) throw snapshotsRes.error;
 
   const snapshotsByTicker = groupBy(snapshotsRes.data, (s) => s.ticker);
+
+  // Latest fundamentals per ticker: walk each ticker's ordered snapshots
+  // backwards, pick the first row with non-null values for each field.
+  // Different fields can come from different snapshot_dates that way,
+  // since FMP sometimes omits a single metric on a given day.
+  type Fundamentals = {
+    market_cap: number | null;
+    enterprise_value: number | null;
+    pe_ratio: number | null;
+    eps: number | null;
+    dividend_yield: number | null;
+    sector: string | null;
+    industry: string | null;
+  };
+  const fundamentalsByTicker = new Map<string, Fundamentals>();
+  for (const [ticker, rows] of snapshotsByTicker) {
+    const f: Fundamentals = {
+      market_cap: null,
+      enterprise_value: null,
+      pe_ratio: null,
+      eps: null,
+      dividend_yield: null,
+      sector: null,
+      industry: null,
+    };
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i];
+      if (f.market_cap === null && r.market_cap !== null) f.market_cap = r.market_cap;
+      if (f.enterprise_value === null && r.enterprise_value !== null) f.enterprise_value = r.enterprise_value;
+      if (f.pe_ratio === null && r.pe_ratio !== null) f.pe_ratio = r.pe_ratio;
+      if (f.eps === null && r.eps !== null) f.eps = r.eps;
+      if (f.dividend_yield === null && r.dividend_yield !== null) f.dividend_yield = r.dividend_yield;
+      if (f.sector === null && r.sector !== null) f.sector = r.sector;
+      if (f.industry === null && r.industry !== null) f.industry = r.industry;
+      if (
+        f.market_cap !== null && f.enterprise_value !== null && f.pe_ratio !== null &&
+        f.eps !== null && f.dividend_yield !== null && f.sector !== null && f.industry !== null
+      ) break;
+    }
+    fundamentalsByTicker.set(ticker, f);
+  }
 
   const lotsByTicker = groupBy(lotsRes.data, (l) => l.ticker);
   const tradesByTicker = groupBy(tradesRes.data, (t) => t.ticker);
@@ -136,6 +179,16 @@ export async function getPositions(
       enriched[0]?.committee_id ?? lots[0].committee_id,
     );
 
+    const f = fundamentalsByTicker.get(ticker) ?? {
+      market_cap: null,
+      enterprise_value: null,
+      pe_ratio: null,
+      eps: null,
+      dividend_yield: null,
+      sector: null,
+      industry: null,
+    };
+
     drafts.push({
       ticker,
       name: enriched[0]?.name ?? lots[0].name,
@@ -164,6 +217,14 @@ export async function getPositions(
       current_size: currentPrice === null ? null : currentSize,
       current_quantity: sharesRemaining,
       initial_purchase: initialPurchase,
+
+      market_cap: f.market_cap,
+      enterprise_value: f.enterprise_value,
+      pe_ratio: f.pe_ratio,
+      eps: f.eps,
+      dividend_yield: f.dividend_yield,
+      sector: f.sector,
+      industry: f.industry,
 
       _current_size: currentSize,
     });

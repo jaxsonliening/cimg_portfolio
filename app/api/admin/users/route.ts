@@ -99,3 +99,55 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+// DELETE /api/admin/users?user_id=<uuid> — fully remove a user. profiles
+// row cascades via FK. Guardrails mirror PATCH: can't delete yourself,
+// can't delete the last admin.
+export async function DELETE(request: Request) {
+  let caller: { userId: string };
+  try {
+    caller = await requireAdmin();
+  } catch (res) {
+    return res as Response;
+  }
+
+  const userId = new URL(request.url).searchParams.get("user_id");
+  if (!userId || !/^[0-9a-f-]{36}$/i.test(userId)) {
+    return NextResponse.json({ error: "user_id is required" }, { status: 400 });
+  }
+
+  if (userId === caller.userId) {
+    return NextResponse.json(
+      { error: "cannot remove yourself" },
+      { status: 400 },
+    );
+  }
+
+  const admin = createAdminClient();
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (target?.role === "admin") {
+    const { count } = await admin
+      .from("profiles")
+      .select("user_id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if ((count ?? 0) <= 1) {
+      return NextResponse.json(
+        { error: "cannot remove the last admin" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
