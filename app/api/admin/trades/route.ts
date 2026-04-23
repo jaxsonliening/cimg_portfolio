@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { allocateTradesFifo } from "@/lib/calc/lots";
 
 const CreateTradeSchema = z.object({
@@ -18,19 +19,11 @@ const CreateTradeSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-  if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  let caller: { userId: string };
+  try {
+    caller = await requireAdmin();
+  } catch (res) {
+    return res as Response;
   }
 
   let body: unknown;
@@ -48,14 +41,16 @@ export async function POST(request: Request) {
     );
   }
 
-  // Make sure the sell doesn't exceed what's currently held. Pull all lots
-  // + existing trades for this ticker and FIFO-allocate to find remaining.
+  // Oversell guard: pull all lots + prior trades for this ticker, FIFO-
+  // allocate, and reject if the new sell would take shares_remaining
+  // below zero.
+  const admin = createAdminClient();
   const [lotsRes, tradesRes] = await Promise.all([
-    supabase
+    admin
       .from("positions")
       .select("id, ticker, shares, cost_basis, purchased_at")
       .eq("ticker", parsed.data.ticker),
-    supabase
+    admin
       .from("trades")
       .select("ticker, shares, price, traded_at")
       .eq("ticker", parsed.data.ticker),
@@ -91,7 +86,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: inserted, error: tradeError } = await supabase
+  const { data: inserted, error: tradeError } = await admin
     .from("trades")
     .insert({
       ticker: parsed.data.ticker,
@@ -99,7 +94,7 @@ export async function POST(request: Request) {
       price: parsed.data.price,
       traded_at: parsed.data.traded_at,
       note: parsed.data.note,
-      created_by: user.id,
+      created_by: caller.userId,
     })
     .select("id")
     .single();
@@ -110,16 +105,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: cashError } = await supabase.from("cash_transactions").insert({
+  const { error: cashError } = await admin.from("cash_transactions").insert({
     amount: parsed.data.shares * parsed.data.price,
     kind: "trade_sell",
     ticker: parsed.data.ticker,
     occurred_at: parsed.data.traded_at,
     note: `Sell ${parsed.data.shares} ${parsed.data.ticker} @ ${parsed.data.price}`,
-    created_by: user.id,
+    created_by: caller.userId,
   });
   if (cashError) {
-    await supabase.from("trades").delete().eq("id", inserted.id);
+    await admin.from("trades").delete().eq("id", inserted.id);
     return NextResponse.json(
       { error: "cash_insert_failed", message: cashError.message },
       { status: 500 },
