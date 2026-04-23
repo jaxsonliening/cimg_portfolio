@@ -38,6 +38,17 @@ export type PositionRow = {
   current_size: number | null;               // shares * current_price (market value)
   current_quantity: number;                  // shares remaining after FIFO
   initial_purchase: string;                  // earliest lot purchased_at (YYYY-MM-DD)
+
+  // Fundamentals, from the most recent price_snapshots row for this
+  // ticker. All nullable — rows may pre-date fundamentals collection,
+  // and the FMP free tier doesn't surface every field for every ticker.
+  market_cap: number | null;
+  enterprise_value: number | null;
+  pe_ratio: number | null;
+  eps: number | null;
+  dividend_yield: number | null;
+  sector: string | null;
+  industry: string | null;
 };
 
 // ---------- summary panel ----------

@@ -16,6 +16,8 @@ export async function getSummary(
     metaRes,
     fundRes,
     benchmarkRes,
+    latestTickRes,
+    latestSnapshotRes,
   ] = await Promise.all([
     supabase
       .from("positions")
@@ -37,6 +39,18 @@ export async function getSummary(
       .eq("symbol", BENCHMARK)
       .eq("is_daily_close", true)
       .order("observed_at", { ascending: true }),
+    supabase
+      .from("price_ticks")
+      .select("observed_at")
+      .order("observed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("price_snapshots")
+      .select("snapshot_date")
+      .order("snapshot_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   if (lotsRes.error) throw lotsRes.error;
   if (tradesRes.error) throw tradesRes.error;
@@ -140,12 +154,20 @@ export async function getSummary(
         })()
       : null;
 
+  // as_of = the most recent day we have price data for (ticks or daily
+  // close snapshots). Deliberately excludes ticker_meta and fund_snapshots
+  // so the header reflects "prices are current as of" cleanly; PM-driven
+  // portfolio metadata has its own field (last_update_trading_day).
   const asOfCandidates: string[] = [];
-  if (latestFund) asOfCandidates.push(latestFund.date);
+  if (latestTickRes.data?.observed_at) {
+    asOfCandidates.push(latestTickRes.data.observed_at.slice(0, 10));
+  }
+  if (latestSnapshotRes.data?.snapshot_date) {
+    asOfCandidates.push(latestSnapshotRes.data.snapshot_date);
+  }
   if (spyDailySeries.length > 0) {
     asOfCandidates.push(spyDailySeries[spyDailySeries.length - 1].date);
   }
-  if (lastUpdateTradingDay) asOfCandidates.push(lastUpdateTradingDay);
   const asOf = asOfCandidates.length
     ? asOfCandidates.sort().pop()!
     : new Date().toISOString().slice(0, 10);

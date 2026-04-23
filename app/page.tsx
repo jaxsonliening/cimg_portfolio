@@ -10,6 +10,7 @@ import { PositionsTable } from "@/components/positions-table";
 import { SummaryPanel } from "@/components/summary-panel";
 import { WinnersLosersPanel } from "@/components/winners-losers-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ExportAllButton } from "@/components/export-all-button";
 
 export const revalidate = 60;
 
@@ -31,10 +32,15 @@ export default async function Home() {
             CIMG Portfolio
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            As of {summary.as_of}
+            Prices as of {summary.as_of}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ExportAllButton
+            summary={summary}
+            positions={positions}
+            moves={moves}
+          />
           <Link
             href="/admin"
             className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow"

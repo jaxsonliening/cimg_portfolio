@@ -72,7 +72,7 @@ export function PerformanceChart() {
         </div>
       </div>
 
-      <div className="h-64">
+      <div className="h-96">
         {status === "error" ? (
           <Empty>Couldn&apos;t load performance data.</Empty>
         ) : status === "loading" && data.length === 0 ? (

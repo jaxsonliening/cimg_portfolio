@@ -61,6 +61,7 @@ export function TeamClient() {
                   <th className="px-4 py-2 font-medium">Email</th>
                   <th className="px-4 py-2 font-medium">Role</th>
                   <th className="px-4 py-2 font-medium">Last Sign-In</th>
+                  <th className="px-4 py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -85,6 +86,7 @@ function MemberRow({
 }) {
   const [role, setRole] = useState(member.role);
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function save(next: "admin" | "viewer") {
@@ -106,6 +108,25 @@ function MemberRow({
     setSaving(false);
   }
 
+  async function remove() {
+    const label = member.email ?? "this user";
+    if (!confirm(`Remove ${label}? They will lose access immediately and need to be re-invited to return.`)) {
+      return;
+    }
+    setRemoving(true);
+    setMsg(null);
+    const r = await fetch(`/api/admin/users?user_id=${encodeURIComponent(member.user_id)}`, {
+      method: "DELETE",
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      setMsg(body.error ?? `${r.status}`);
+      setRemoving(false);
+      return;
+    }
+    onChange();
+  }
+
   return (
     <tr>
       <td className="px-4 py-2">
@@ -120,7 +141,7 @@ function MemberRow({
         <div className="flex items-center gap-2">
           <select
             value={role}
-            disabled={saving}
+            disabled={saving || removing}
             onChange={(e) => save(e.target.value as "admin" | "viewer")}
             className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm"
           >
@@ -134,6 +155,16 @@ function MemberRow({
         {member.last_sign_in_at
           ? new Date(member.last_sign_in_at).toLocaleDateString()
           : "never"}
+      </td>
+      <td className="px-4 py-2 text-right">
+        <button
+          type="button"
+          onClick={remove}
+          disabled={saving || removing}
+          className="rounded-md border border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50"
+        >
+          {removing ? "Removing…" : "Remove"}
+        </button>
       </td>
     </tr>
   );
