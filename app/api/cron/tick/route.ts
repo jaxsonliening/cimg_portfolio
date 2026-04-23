@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchQuotes } from "@/lib/market/fmp";
-import { isWithinMarketHours } from "@/lib/market/hours";
 import { getActiveTickers } from "@/lib/portfolio/active-tickers";
 
 const BENCHMARK = "SPY";
 
+// Intraday price tick. Called by .github/workflows/snapshot-ticks.yml every
+// 15 min on weekdays 13:00-21:15 UTC (US RTH plus pre/post-close). The
+// workflow schedule is the market-hours gate — we don't re-check here
+// because a silent-skip response reads as 200 OK in Actions logs, masking
+// failures and leaving Supabase empty while Actions shows green.
+
 export async function POST(request: Request) {
   const authFail = checkAuth(request);
   if (authFail) return authFail;
-
-  const force = new URL(request.url).searchParams.get("force") === "1";
-  if (!force && !isWithinMarketHours()) {
-    return NextResponse.json({ status: "skipped", reason: "outside_market_hours" });
-  }
 
   let supabase: ReturnType<typeof createAdminClient>;
   try {
@@ -74,8 +74,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     status: "ok",
     at: now,
-    tickers: tickRows.length,
-    benchmark: benchmarkRow !== null,
+    tickers_requested: tickers.length,
+    tickers_written: tickRows.length,
+    benchmark_written: benchmarkRow !== null,
     missing: symbols.filter((s) => !bySymbol.has(s)),
   });
 }
