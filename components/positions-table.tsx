@@ -257,9 +257,12 @@ function FundamentalsRow({ p }: { p: PositionRow }) {
 function TdTicker({ ticker }: { ticker: string }) {
   return (
     <Td strong>
-      <span className="rounded bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-gray-700 dark:text-gray-300">
+      <a
+        href={`/positions/${encodeURIComponent(ticker)}`}
+        className="rounded bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-gray-700 dark:text-gray-300 transition-colors hover:bg-indigo-100 dark:hover:bg-indigo-950 hover:text-indigo-700 dark:hover:text-indigo-300"
+      >
         {ticker}
-      </span>
+      </a>
     </Td>
   );
 }

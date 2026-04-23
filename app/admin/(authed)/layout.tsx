@@ -44,6 +44,9 @@ export default async function AdminAuthedLayout({
               <Link href="/admin/tickers" className="hover:text-gray-900 dark:hover:text-gray-100">
                 Tickers
               </Link>
+              <Link href="/admin/trades" className="hover:text-gray-900 dark:hover:text-gray-100">
+                Trades
+              </Link>
               <Link href="/admin/team" className="hover:text-gray-900 dark:hover:text-gray-100">
                 Team
               </Link>
