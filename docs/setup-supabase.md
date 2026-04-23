@@ -58,7 +58,7 @@ Once you (or the PM) can reach `/admin`, go to **Admin → Team** (`/admin/team`
 - **Change roles** — dropdown next to each member. Demoting the last remaining admin is blocked server-side so nobody locks the group out.
 - **Rotate ownership** — when the PM graduates, they promote their successor, the successor promotes the next class, the outgoing PM gets demoted. No SQL Editor, no service-role key handoff.
 
-For the normal `/admin/login` magic-link flow to deliver emails instead of showing the link inline, configure Resend (§7).
+For the normal `/admin/login` magic-link flow to deliver emails, configure SendGrid (§7).
 
 ## 6. Production deploy
 
@@ -68,39 +68,39 @@ When deploying to Vercel, set the same three Supabase env vars in **Project Sett
 - `ALPHA_VANTAGE_API_KEY` — fallback, from [Alpha Vantage](https://www.alphavantage.co).
 - `CRON_SECRET` — generate with `openssl rand -hex 32`. Same value goes into the GitHub Actions repo secret.
 
-## 7. Configure email delivery (Resend — required for self-serve login)
+## 7. Configure email delivery (SendGrid — required for self-serve login)
 
-Supabase's built-in SMTP is unreliable: rate-limited, often blocked by `.edu` domains, no delivery signal. We bypass it entirely — `/admin/login` calls `/api/auth/email-link`, which generates the magic link server-side with the service-role key and delivers it through **Resend**.
+Supabase's built-in SMTP is unreliable for `.edu` domains and gives no delivery signal. We bypass it: `/admin/login` calls `/api/auth/email-link`, which generates the magic link server-side with the service-role key and delivers it through **SendGrid**.
 
-> **Until Resend is configured, the `/admin/login` self-serve flow is disabled** (returns 503 "Email delivery is not configured"). This is intentional: handing back the sign-in URL in the HTTP response would let anyone type an admin's email and receive a working session cookie. Use `/admin/team` invites (gated to admins) or `npm run admin-link` (local CLI) to get people in until email delivery is set up.
+> **Until SendGrid is configured, the `/admin/login` self-serve flow returns 503.** This is intentional: returning the sign-in URL in the HTTP response would let anyone type an admin's email and receive a valid session cookie. Use `/admin/team` invites (admin-gated) or `npm run admin-link` (local CLI) to get people in until email is set up.
 
-Free tier covers 3,000 emails/month and 100/day — more than CIMG needs.
+Free tier: 100 emails/day forever, no credit card. SendGrid's **Single Sender Verification** lets you authenticate any email address as the sender with a click-a-link flow. No custom domain required.
 
-1. **Sign up** at [resend.com](https://resend.com) — free, no credit card.
-2. **Pick a sender:**
-   - *Quickest:* skip domain verification and use `onboarding@resend.dev` as the sender. This works immediately but only delivers to the email address you signed up with — good for local testing, not for inviting real users.
-   - *For real use:* go to **Domains → Add Domain**, enter the domain you'll send from (e.g. `cimg.example.edu`), and add the DNS records Resend shows you (SPF + DKIM). Verification usually takes a few minutes. Once green, any address on that domain works as a sender.
-3. **Create an API key** at **API Keys → Create API Key**. Full access is fine for this use case. Copy it once — Resend won't show it again.
-4. **Add the env vars** to `.env.local`:
+1. **Sign up** at [sendgrid.com](https://signup.sendgrid.com). Free tier is fine.
+2. **Verify a sender email** at **Settings → Sender Authentication → Single Sender Verification → Create New Sender**. You can use:
+   - A free Gmail you create specifically for the club (`cimgua.team@gmail.com` style), or
+   - Any email address you own.
+   SendGrid sends a verify link to that address; click it. Done.
+3. **Create an API key** at **Settings → API Keys → Create API Key**. Choose "Full Access" or at least "Mail Send" permission. Copy it once; SendGrid won't show it again.
+4. **Add the env vars** to `.env.local` (and Vercel → **Project Settings → Environment Variables**):
 
    ```bash
-   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   RESEND_FROM="CIMG Portfolio <noreply@yourdomain.com>"
-   # or, for quick testing before domain verification:
-   # RESEND_FROM="CIMG Portfolio <onboarding@resend.dev>"
+   SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxx
+   SENDGRID_FROM="CIMG Portfolio <the.verified.address@example.com>"
    ```
 
-   Mirror the same two variables into Vercel → **Project Settings → Environment Variables** for production.
-5. **Restart the dev server** (`Ctrl+C`, `npm run dev`) so Next.js picks up the new env. Rebuild before redeploying to Vercel.
-6. **Test** at `/admin/login`: enter your email, submit. You should see "Check your email" and receive the sign-in link within a few seconds. If the form returns a 503 "Email delivery is not configured", the env vars aren't being read — double-check the file and the restart.
+   The address inside the angle brackets must be the verified sender from step 2.
+5. **Redeploy** so the serverless functions pick up the new env. On Vercel: **Deployments → top → ⋯ → Redeploy**. Locally: restart `npm run dev`.
+6. **Test** at `/admin/login`. Submit your email; you should see "Check your email" and receive the sign-in link in a few seconds. If the form returns 503, the env vars aren't visible to the runtime — check the Environments column in Vercel and redeploy.
 
-While you're waiting to verify a domain, `npm run admin-link -- you@example.com --admin` still works as the fastest bootstrap path and doesn't depend on Resend at all.
+While you're waiting, `npm run admin-link -- you@example.com --admin` still works as a bootstrap path that doesn't depend on email at all.
 
 ## Troubleshooting
 
 - **`PGRST125: Invalid path specified in request URL`** — `NEXT_PUBLIC_SUPABASE_URL` has `/rest/v1` or a trailing slash. Trim it to just `https://<ref>.supabase.co`.
-- **`/admin/login` says "Check your email" but nothing arrives** — Resend accepted the send but delivery is failing (bounced, filtered, or the sender domain isn't verified). Check Resend → **Logs** for the specific error. As a temporary unblock, `npm run admin-link -- email@example.com --admin` prints a paste-able sign-in URL.
-- **`/admin/login` returns 503 "Email delivery is not configured"** — `RESEND_API_KEY` or `RESEND_FROM` isn't set in the server env. Copy both into `.env.local` (and Vercel), then restart. Do *not* try to re-enable the old inline-link fallback; it was removed because it let anonymous callers generate session cookies for arbitrary emails.
+- **`/admin/login` says "Check your email" but nothing arrives** — check SendGrid → **Activity Feed** for the specific failure. Common causes: the sender isn't verified yet, or the free-tier 100/day limit is hit. As a temporary unblock, `npm run admin-link -- email@example.com --admin` prints a paste-able sign-in URL.
+- **`/admin/login` returns 503 "Email delivery is not configured"** — `SENDGRID_API_KEY` or `SENDGRID_FROM` isn't set in the server env. Set both in Vercel (Production scope) and redeploy so the serverless functions see the new values.
+- **`Couldn't send the sign-in email. Try again in a minute`** — SendGrid rejected the send. Check the Vercel function logs for the raw error, and SendGrid → Activity Feed. Usually the sender in `SENDGRID_FROM` doesn't match a verified single sender.
 - **Magic link opens but lands on the home page logged out** — `redirect_to` is pointing at `/` instead of `/auth/callback`. The Site URL alone isn't enough; add `/auth/callback` explicitly under Redirect URLs.
 - **New user didn't get a `profiles` row** — confirm the `on_auth_user_created` trigger exists (Database → Triggers).
 - **RLS blocking a query in dev** — you're probably hitting it with the anon key when you need the service role; double-check you're in a server route handler and that it's an admin-only path.

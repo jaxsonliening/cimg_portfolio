@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isConfigured as resendConfigured, sendEmail } from "@/lib/email/resend";
+import { isConfigured as emailConfigured, sendEmail } from "@/lib/email/sendgrid";
 
-// Public self-serve sign-in. Replaces Supabase's default-SMTP magic-link
-// flow (which is rate-limited, routinely blocked by .edu MX, and gives
-// no delivery signal). We generate the link server-side with the
-// service-role key, then deliver it over email via Resend.
+// Public self-serve sign-in. Replaces Supabase's default-SMTP
+// magic-link flow (which is rate-limited and routinely blocked by
+// .edu MX). We generate the link server-side with the service-role
+// key, then deliver it via our configured email provider (SendGrid).
 //
-// The link MUST only reach the address being signed into — never the
+// The link MUST only reach the address being signed into, never the
 // caller. Returning it to the anonymous HTTP caller would let anyone
-// produce a valid session cookie for any email they type (admin
-// takeover for known addresses, phantom viewer accounts for
-// arbitrary mailboxes). When Resend isn't configured or delivery
-// fails, fail closed with 503 so the operator sees it during setup.
-// The /admin/team invite UI is gated by requireAdmin() and legitimately
-// hands the URL to the admin who can then forward it out-of-band; the
-// CLI script scripts/admin-link.mjs is the supported bootstrap path
-// when no Resend account exists yet.
+// produce a valid session cookie for any email they type. When email
+// isn't configured or delivery fails, we fail closed with 503/502 so
+// the operator sees it during setup. The /admin/team invite UI is
+// gated by requireAdmin() and legitimately hands the URL to the admin
+// who forwards it out-of-band; scripts/admin-link.mjs is the bootstrap
+// path that doesn't depend on email at all.
 
 const BodySchema = z.object({
   email: z.string().email().trim().toLowerCase(),
@@ -86,7 +84,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!resendConfigured()) {
+  if (!emailConfigured()) {
     // Fail closed: see the file header. Without email delivery we have
     // no channel that proves the caller controls this mailbox.
     return NextResponse.json(
@@ -114,7 +112,7 @@ export async function POST(request: Request) {
   } catch (err) {
     // Don't leak the provider error to the client or downgrade to
     // inline delivery. Server-side log only.
-    console.error("resend send failed:", err);
+    console.error("email send failed:", err);
     return NextResponse.json(
       { error: "Couldn't send the sign-in email. Try again in a minute." },
       { status: 502 },

@@ -50,8 +50,8 @@ Copy into Vercel's **Project Settings → Environment Variables**. Set **Product
 | `CRON_SECRET` | output of `openssl rand -hex 32` | Must match the same secret stored in GitHub Actions secrets. |
 | `FMP_API_KEY` | from financialmodelingprep.com | Optional if you haven't wired market data yet. |
 | `ALPHA_VANTAGE_API_KEY` | from alphavantage.co | Fallback. Leave blank if you don't have one. |
-| `RESEND_API_KEY` | from resend.com | Required if you want self-serve `/admin/login` to work. Without it, the form returns 503 and users must be invited by an admin from `/admin/team` or bootstrapped via `npm run admin-link`. |
-| `RESEND_FROM` | e.g. `CIMG Portfolio <noreply@yourdomain.com>` | Must be a verified sender in Resend. Required alongside `RESEND_API_KEY`. |
+| `SENDGRID_API_KEY` | from sendgrid.com | Required for self-serve `/admin/login`. Without it, the form returns 503 and users must be invited by an admin from `/admin/team` or bootstrapped via `npm run admin-link`. |
+| `SENDGRID_FROM` | e.g. `CIMG Portfolio <you@example.com>` | Must match a verified single sender in SendGrid. Required alongside `SENDGRID_API_KEY`. |
 
 `APP_URL` is the circular-dependency variable: you don't know it until Vercel assigns it, but the app needs it. Two options:
 
@@ -109,14 +109,14 @@ Vercel gives you `<project>.vercel.app` for free. If you want `portfolio.cimg.ex
    - Update `APP_URL` in Vercel env to the custom domain and redeploy.
    - Update Supabase **Site URL** + **Redirect URLs** with the custom domain.
    - Update `APP_URL` in GitHub Actions secrets.
-   - Update `RESEND_FROM` if it was using a Vercel-specific domain.
+   - Update `SENDGRID_FROM` if the verified sender address changes.
 
 ## 8. Smoke test
 
 Once everything's wired:
 
 1. Visit the URL in incognito. Dashboard loads. Seed numbers match the Excel snapshot.
-2. Click **Admin Sign In** → enter your email → if Resend is configured, you'll get a sign-in email; otherwise the form returns 503 and you should use `npm run admin-link` (local) or have an existing admin invite you from `/admin/team`.
+2. Click **Admin Sign In** → enter your email → if SendGrid is configured, you'll get a sign-in email; otherwise the form returns 503 and you should use `npm run admin-link` (local) or have an existing admin invite you from `/admin/team`.
 3. On `/admin/team`, confirm your role is `admin` and try inviting a test email.
 4. If market data is wired: trigger a manual tick via GitHub Actions and watch the Day Change column update within a minute.
 
