@@ -6,8 +6,27 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CIMG Portfolio",
-  description: "Live portfolio dashboard for CIMG.",
+  title: {
+    default: "CIMG Portfolio",
+    template: "%s · CIMG Portfolio",
+  },
+  description: "Live portfolio dashboard for the Culverhouse Investment Management Group.",
+  applicationName: "CIMG Portfolio",
+  openGraph: {
+    title: "CIMG Portfolio",
+    description: "Live portfolio dashboard for the Culverhouse Investment Management Group.",
+    type: "website",
+    siteName: "CIMG Portfolio",
+  },
+  twitter: {
+    card: "summary",
+    title: "CIMG Portfolio",
+    description: "Live portfolio dashboard for the Culverhouse Investment Management Group.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default async function RootLayout({
