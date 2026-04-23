@@ -4,8 +4,7 @@ name: snapshot-ticks
 # The schedule below covers EDT and EST both.
 #
 # Requires repository secrets:
-#   APP_URL       — e.g. https://cimg-portfolio.vercel.app (no trailing slash,
-#                   must be https://, no trailing path)
+#   APP_URL       — e.g. https://cimg-portfolio.vercel.app (no trailing slash)
 #   CRON_SECRET   — matches CRON_SECRET in the Vercel environment
 
 on:
@@ -23,12 +22,13 @@ jobs:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          # -L follows redirects so trailing-slash or http→https rewrites
-          # don't silently return a redirect page and skip the actual work.
-          # -w prints the final HTTP status on its own line for logs.
-          response=$(curl --fail --show-error --silent -L \
+          # -L follows redirects (trailing-slash / http→https / domain aliases).
+          # --fail-with-body still fails the job on 4xx/5xx, but prints the
+          # response body first so JSON errors ({"error":"..."}) are visible
+          # in the Actions log.
+          # -w prints the final HTTP status after the body.
+          curl --fail-with-body --show-error --silent -L \
                --max-time 60 \
                -w "\nHTTP %{http_code}\n" \
                -X POST "$APP_URL/api/cron/tick" \
-               -H "Authorization: Bearer $CRON_SECRET")
-          echo "$response"
+               -H "Authorization: Bearer $CRON_SECRET"
