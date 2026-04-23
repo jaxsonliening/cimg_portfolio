@@ -77,6 +77,14 @@ export type PortfolioSummary = {
   last_update_trading_day: string | null;    // from max(ticker_meta.value_updated_at)
   capital_injection_date: string | null;     // from latest cash_transactions kind='capital_injection'
   as_of: string;                             // YYYY-MM-DD of most recent snapshot used
+
+  // Risk metrics over the post-capital-injection window. All decimal-
+  // scaled (0.18 = 18% vol, -0.12 = -12% drawdown); null when there
+  // isn't enough daily history to compute (< 2 daily returns).
+  beta: number | null;
+  volatility: number | null;
+  sharpe: number | null;
+  max_drawdown: number | null;
 };
 
 // ---------- winners / losers ----------

@@ -3,6 +3,7 @@ import type { Database } from "@/lib/supabase/types";
 import type { PortfolioSummary } from "@/lib/portfolio/types";
 import { latestPricesFor } from "@/lib/queries/latest-prices";
 import { allocateTradesFifo } from "@/lib/calc/lots";
+import { computeRiskMetrics } from "@/lib/calc/risk";
 
 const BENCHMARK = "SPY";
 
@@ -175,6 +176,21 @@ export async function getSummary(
   const cashPositionPct =
     marketValuePortfolio > 0 ? cashBalance / marketValuePortfolio : 0;
 
+  // Risk metrics over the post-capital-injection window. Aligns fund
+  // and SPY by date so we only use days where both series have a
+  // value — otherwise the beta regression would see mismatched
+  // returns. Pre-injection data is excluded so the one-time step
+  // doesn't poison the volatility/drawdown figures.
+  const postInjectionDate = capitalInjectionDate ?? "";
+  const alignedValues = alignByDate(
+    fundSeries.filter((f) => !postInjectionDate || f.date >= postInjectionDate),
+    spyDailySeries.filter((s) => !postInjectionDate || s.date >= postInjectionDate),
+  );
+  const risk = computeRiskMetrics(
+    alignedValues.map((v) => v.fund),
+    alignedValues.map((v) => v.bench),
+  );
+
   return {
     market_value_equities: marketValueEquities,
     cash_balance: cashBalance,
@@ -195,7 +211,28 @@ export async function getSummary(
     last_update_trading_day: lastUpdateTradingDay,
     capital_injection_date: capitalInjectionDate,
     as_of: asOf,
+
+    beta: risk.beta,
+    volatility: risk.volatility,
+    sharpe: risk.sharpe,
+    max_drawdown: risk.max_drawdown,
   };
+}
+
+// Inner-join two dated series by date. Used so beta / correlation
+// computations only see days where both sides have a value.
+function alignByDate(
+  fund: DatedValue[],
+  bench: DatedValue[],
+): { fund: number; bench: number }[] {
+  const byDate = new Map<string, number>();
+  for (const f of fund) byDate.set(f.date, f.value);
+  const out: { fund: number; bench: number }[] = [];
+  for (const b of bench) {
+    const f = byDate.get(b.date);
+    if (f !== undefined) out.push({ fund: f, bench: b.value });
+  }
+  return out;
 }
 
 type DatedValue = { date: string; value: number };

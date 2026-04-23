@@ -11,6 +11,7 @@ import { SummaryPanel } from "@/components/summary-panel";
 import { WinnersLosersPanel } from "@/components/winners-losers-panel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportAllButton } from "@/components/export-all-button";
+import { RiskMetricsPanel } from "@/components/risk-metrics-panel";
 
 export const revalidate = 60;
 
@@ -58,6 +59,10 @@ export default async function Home() {
         <div className="lg:col-span-1">
           <WinnersLosersPanel summary={summary} moves={moves} />
         </div>
+      </section>
+
+      <section className="mb-8">
+        <RiskMetricsPanel summary={summary} />
       </section>
 
       <section className="mb-8 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">

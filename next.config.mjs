@@ -18,6 +18,13 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
+          // Force HTTPS for a year on every browser that's already
+          // loaded the site once. Includes subdomains so any future
+          // preview URLs under the same apex are covered.
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
         ],
       },
     ];
