@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 export function LoginForm() {
@@ -41,7 +42,13 @@ export function LoginForm() {
 
   return (
     <main className="mx-auto mt-16 max-w-md p-6">
-      <h1 className="text-2xl font-semibold">Admin Sign In</h1>
+      <Link
+        href="/"
+        className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100"
+      >
+        ← Back to Portfolio
+      </Link>
+      <h1 className="mt-4 text-2xl font-semibold">Admin Sign In</h1>
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Magic-link sign-in for the CIMG Portfolio Manager.
       </p>
