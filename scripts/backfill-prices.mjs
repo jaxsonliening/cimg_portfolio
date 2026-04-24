@@ -73,7 +73,13 @@ for (const symbol of allSymbols) {
     );
 
     if (symbol === BENCHMARK) {
-      const rows = closes.map((q) => {
+      // There are two uniqueness constraints on benchmark_snapshots:
+      // the primary key (symbol, observed_at) and a partial unique
+      // index on (symbol, close_date) where is_daily_close. Our
+      // canonical-time (20:00Z) might collide with an earlier cron
+      // run that used the tick-time of whenever it fired, so query
+      // the dates already present and skip those.
+      const mappedRows = closes.map((q) => {
         const iso = q.date.toISOString();
         const date = iso.slice(0, 10);
         return {
@@ -84,14 +90,31 @@ for (const symbol of allSymbols) {
           close_date: date,
         };
       });
+
+      const { data: existingRows } = await supabase
+        .from("benchmark_snapshots")
+        .select("close_date")
+        .eq("symbol", BENCHMARK)
+        .eq("is_daily_close", true)
+        .in(
+          "close_date",
+          mappedRows.map((r) => r.close_date),
+        );
+      const existing = new Set(
+        (existingRows ?? []).map((r) => r.close_date),
+      );
+      const rows = mappedRows.filter((r) => !existing.has(r.close_date));
+
       if (rows.length) {
         const { error } = await supabase
           .from("benchmark_snapshots")
-          .upsert(rows, { onConflict: "symbol,observed_at" });
+          .insert(rows);
         if (error) throw new Error(error.message);
       }
       totalBenchRows += rows.length;
-      console.log(`${rows.length} benchmark closes`);
+      console.log(
+        `${rows.length} new benchmark closes (${existing.size} already present)`,
+      );
     } else {
       const rows = closes.map((q) => ({
         ticker: symbol,

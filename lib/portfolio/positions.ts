@@ -69,7 +69,12 @@ export async function getPositions(
       )
       .in("ticker", tickers)
       .gte("snapshot_date", earliestNeeded)
-      .order("snapshot_date", { ascending: true }),
+      .order("snapshot_date", { ascending: true })
+      // Supabase defaults to 1000 rows per query. 26 tickers × 400
+      // daily closes = ~10k rows — without this, we silently drop
+      // the most recent dates and week/month lookups fall back to
+      // whatever's near the 1000th oldest row.
+      .range(0, 49999),
   ]);
   if (snapshotsRes.error) throw snapshotsRes.error;
 

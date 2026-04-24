@@ -33,13 +33,15 @@ export async function getSummary(
     supabase
       .from("fund_snapshots")
       .select("snapshot_date, total_value")
-      .order("snapshot_date", { ascending: true }),
+      .order("snapshot_date", { ascending: true })
+      .range(0, 49999),
     supabase
       .from("benchmark_snapshots")
       .select("observed_at, price, close_date")
       .eq("symbol", BENCHMARK)
       .eq("is_daily_close", true)
-      .order("observed_at", { ascending: true }),
+      .order("observed_at", { ascending: true })
+      .range(0, 49999),
     supabase
       .from("price_ticks")
       .select("observed_at")

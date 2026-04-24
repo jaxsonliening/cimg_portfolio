@@ -137,7 +137,8 @@ async function dailySeries(
   let fundQuery = supabase
     .from("fund_snapshots")
     .select("snapshot_date, total_value")
-    .order("snapshot_date", { ascending: true });
+    .order("snapshot_date", { ascending: true })
+    .range(0, 49999);
   if (startDate) fundQuery = fundQuery.gte("snapshot_date", startDate);
 
   const startTimestamp = startDate ? `${startDate}T00:00:00Z` : null;
@@ -146,7 +147,8 @@ async function dailySeries(
     .select("observed_at, price")
     .eq("symbol", BENCHMARK)
     .eq("is_daily_close", true)
-    .order("observed_at", { ascending: true });
+    .order("observed_at", { ascending: true })
+    .range(0, 49999);
   if (startTimestamp) benchmarkQuery = benchmarkQuery.gte("observed_at", startTimestamp);
 
   const [fundRes, benchmarkRes] = await Promise.all([fundQuery, benchmarkQuery]);
