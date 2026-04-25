@@ -41,12 +41,18 @@ export type PositionRow = {
 
   // Fundamentals, from the most recent price_snapshots row for this
   // ticker. All nullable — rows may pre-date fundamentals collection,
-  // and the FMP free tier doesn't surface every field for every ticker.
+  // and Yahoo doesn't surface every field for every ticker (ETFs and
+  // some financials lack EV / EV/EBITDA, for example).
   market_cap: number | null;
   enterprise_value: number | null;
   pe_ratio: number | null;
+  forward_pe: number | null;
   eps: number | null;
   dividend_yield: number | null;
+  price_to_book: number | null;
+  ev_to_ebitda: number | null;
+  roe: number | null;             // decimal — 0.18 = 18%
+  beta: number | null;
   sector: string | null;
   industry: string | null;
 };

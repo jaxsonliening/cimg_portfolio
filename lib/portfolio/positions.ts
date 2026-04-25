@@ -76,15 +76,20 @@ export async function getPositions(
       market_cap: number | null;
       enterprise_value: number | null;
       pe_ratio: number | null;
+      forward_pe: number | null;
       eps: number | null;
       dividend_yield: number | null;
+      price_to_book: number | null;
+      ev_to_ebitda: number | null;
+      roe: number | null;
+      beta: number | null;
       sector: string | null;
       industry: string | null;
     }>(() =>
       supabase
         .from("price_snapshots")
         .select(
-          "ticker, snapshot_date, close_price, market_cap, enterprise_value, pe_ratio, eps, dividend_yield, sector, industry",
+          "ticker, snapshot_date, close_price, market_cap, enterprise_value, pe_ratio, forward_pe, eps, dividend_yield, price_to_book, ev_to_ebitda, roe, beta, sector, industry",
         )
         .in("ticker", tickers)
         .gte("snapshot_date", earliestNeeded)
@@ -112,8 +117,13 @@ export async function getPositions(
     market_cap: number | null;
     enterprise_value: number | null;
     pe_ratio: number | null;
+    forward_pe: number | null;
     eps: number | null;
     dividend_yield: number | null;
+    price_to_book: number | null;
+    ev_to_ebitda: number | null;
+    roe: number | null;
+    beta: number | null;
     sector: string | null;
     industry: string | null;
   };
@@ -123,8 +133,13 @@ export async function getPositions(
       market_cap: null,
       enterprise_value: null,
       pe_ratio: null,
+      forward_pe: null,
       eps: null,
       dividend_yield: null,
+      price_to_book: null,
+      ev_to_ebitda: null,
+      roe: null,
+      beta: null,
       sector: null,
       industry: null,
     };
@@ -133,13 +148,20 @@ export async function getPositions(
       if (f.market_cap === null && r.market_cap !== null) f.market_cap = r.market_cap;
       if (f.enterprise_value === null && r.enterprise_value !== null) f.enterprise_value = r.enterprise_value;
       if (f.pe_ratio === null && r.pe_ratio !== null) f.pe_ratio = r.pe_ratio;
+      if (f.forward_pe === null && r.forward_pe !== null) f.forward_pe = r.forward_pe;
       if (f.eps === null && r.eps !== null) f.eps = r.eps;
       if (f.dividend_yield === null && r.dividend_yield !== null) f.dividend_yield = r.dividend_yield;
+      if (f.price_to_book === null && r.price_to_book !== null) f.price_to_book = r.price_to_book;
+      if (f.ev_to_ebitda === null && r.ev_to_ebitda !== null) f.ev_to_ebitda = r.ev_to_ebitda;
+      if (f.roe === null && r.roe !== null) f.roe = r.roe;
+      if (f.beta === null && r.beta !== null) f.beta = r.beta;
       if (f.sector === null && r.sector !== null) f.sector = r.sector;
       if (f.industry === null && r.industry !== null) f.industry = r.industry;
       if (
         f.market_cap !== null && f.enterprise_value !== null && f.pe_ratio !== null &&
-        f.eps !== null && f.dividend_yield !== null && f.sector !== null && f.industry !== null
+        f.forward_pe !== null && f.eps !== null && f.dividend_yield !== null &&
+        f.price_to_book !== null && f.ev_to_ebitda !== null && f.roe !== null &&
+        f.beta !== null && f.sector !== null && f.industry !== null
       ) break;
     }
     fundamentalsByTicker.set(ticker, f);
@@ -243,18 +265,28 @@ export async function getPositions(
       market_cap: null,
       enterprise_value: null,
       pe_ratio: null,
+      forward_pe: null,
       eps: null,
       dividend_yield: null,
+      price_to_book: null,
+      ev_to_ebitda: null,
+      roe: null,
+      beta: null,
       sector: null,
       industry: null,
     };
     const liveProfile = profileByTicker.get(ticker);
     const f = {
       market_cap: live?.marketCap ?? snapFund.market_cap,
-      enterprise_value: snapFund.enterprise_value,
+      enterprise_value: liveProfile?.enterpriseValue ?? snapFund.enterprise_value,
       pe_ratio: live?.pe ?? snapFund.pe_ratio,
+      forward_pe: live?.forwardPe ?? snapFund.forward_pe,
       eps: live?.eps ?? snapFund.eps,
       dividend_yield: live?.dividendYield ?? snapFund.dividend_yield,
+      price_to_book: liveProfile?.priceToBook ?? snapFund.price_to_book,
+      ev_to_ebitda: liveProfile?.evToEbitda ?? snapFund.ev_to_ebitda,
+      roe: liveProfile?.roe ?? snapFund.roe,
+      beta: liveProfile?.beta ?? snapFund.beta,
       sector: liveProfile?.sector ?? snapFund.sector,
       industry: liveProfile?.industry ?? snapFund.industry,
     };
@@ -291,8 +323,13 @@ export async function getPositions(
       market_cap: f.market_cap,
       enterprise_value: f.enterprise_value,
       pe_ratio: f.pe_ratio,
+      forward_pe: f.forward_pe,
       eps: f.eps,
       dividend_yield: f.dividend_yield,
+      price_to_book: f.price_to_book,
+      ev_to_ebitda: f.ev_to_ebitda,
+      roe: f.roe,
+      beta: f.beta,
       sector: f.sector,
       industry: f.industry,
 

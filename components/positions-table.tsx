@@ -37,8 +37,13 @@ type SortKey =
   | "market_cap"
   | "enterprise_value"
   | "pe_ratio"
+  | "forward_pe"
   | "eps"
   | "dividend_yield"
+  | "price_to_book"
+  | "ev_to_ebitda"
+  | "roe"
+  | "beta"
   | "sector";
 
 type SortDir = "asc" | "desc";
@@ -81,8 +86,13 @@ const FUNDAMENTALS_COLUMNS: ColumnDef[] = [
   { key: "market_cap", label: "Market Cap", right: true, csv: "Market Cap ($)", csvValue: (p) => p.market_cap },
   { key: "enterprise_value", label: "Enterprise Value", right: true, csv: "Enterprise Value ($)", csvValue: (p) => p.enterprise_value },
   { key: "pe_ratio", label: "P/E", right: true, csv: "P/E", csvValue: (p) => p.pe_ratio },
+  { key: "forward_pe", label: "Fwd P/E", right: true, csv: "Forward P/E", csvValue: (p) => p.forward_pe },
+  { key: "price_to_book", label: "P/B", right: true, csv: "P/B", csvValue: (p) => p.price_to_book },
+  { key: "ev_to_ebitda", label: "EV/EBITDA", right: true, csv: "EV/EBITDA", csvValue: (p) => p.ev_to_ebitda },
   { key: "eps", label: "EPS", right: true, csv: "EPS ($)", csvValue: (p) => p.eps },
-  { key: "dividend_yield", label: "Dividend Yield", right: true, csv: "Dividend Yield (decimal)", csvValue: (p) => p.dividend_yield },
+  { key: "roe", label: "ROE", right: true, csv: "ROE (decimal)", csvValue: (p) => p.roe },
+  { key: "dividend_yield", label: "Div Yield", right: true, csv: "Dividend Yield (decimal)", csvValue: (p) => p.dividend_yield },
+  { key: "beta", label: "Beta", right: true, csv: "Beta", csvValue: (p) => p.beta },
   { key: "current_price", label: "Current Price", right: true, csv: "Current Price ($)", csvValue: (p) => p.current_price },
   { key: "committee", label: "Committee", csv: "Committee", csvValue: (p) => p.committee?.name ?? null },
 ];
@@ -246,8 +256,13 @@ function FundamentalsRow({ p }: { p: PositionRow }) {
       <Td right>{fmtCompactCurrency(p.market_cap)}</Td>
       <Td right>{fmtCompactCurrency(p.enterprise_value)}</Td>
       <Td right>{fmtNumber(p.pe_ratio, 2)}</Td>
+      <Td right>{fmtNumber(p.forward_pe, 2)}</Td>
+      <Td right>{fmtNumber(p.price_to_book, 2)}</Td>
+      <Td right>{fmtNumber(p.ev_to_ebitda, 2)}</Td>
       <Td right>{fmtCurrency(p.eps)}</Td>
+      <Td right>{fmtPctPlain(p.roe, 1)}</Td>
       <Td right>{fmtPctPlain(p.dividend_yield, 2)}</Td>
+      <Td right>{fmtNumber(p.beta, 2)}</Td>
       <Td right>{fmtCurrency(p.current_price)}</Td>
       <TdCommittee p={p} />
     </tr>
@@ -343,8 +358,13 @@ function sortValue(p: PositionRow, key: SortKey): string | number | null {
     case "market_cap": return p.market_cap;
     case "enterprise_value": return p.enterprise_value;
     case "pe_ratio": return p.pe_ratio;
+    case "forward_pe": return p.forward_pe;
     case "eps": return p.eps;
     case "dividend_yield": return p.dividend_yield;
+    case "price_to_book": return p.price_to_book;
+    case "ev_to_ebitda": return p.ev_to_ebitda;
+    case "roe": return p.roe;
+    case "beta": return p.beta;
     case "sector": return p.sector;
   }
 }

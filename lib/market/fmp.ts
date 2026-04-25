@@ -23,6 +23,7 @@ export type FmpQuote = {
   price: number;
   marketCap: number | null;
   pe: number | null;
+  forwardPe: number | null;
   eps: number | null;
   // Day-change shipped straight from Yahoo so the dashboard doesn't
   // depend on price_snapshots having yesterday's close written.
@@ -32,11 +33,20 @@ export type FmpQuote = {
   dividendYield: number | null;
 };
 
+// Profile carries the metrics that don't show up in the basic quote
+// (EV, P/B, EV/EBITDA, ROE, Beta). Yahoo bundles those into the
+// quoteSummary `defaultKeyStatistics` / `summaryDetail` / `financialData`
+// modules, which we already fetch once per ticker per daily run.
 export type FmpProfile = {
   symbol: string;
   sector: string | null;
   industry: string | null;
   companyName: string | null;
+  enterpriseValue: number | null;
+  priceToBook: number | null;
+  evToEbitda: number | null;
+  roe: number | null;            // decimal — 0.18 = 18%
+  beta: number | null;
 };
 
 type YQuote = {
@@ -61,6 +71,20 @@ type YQuoteSummary = {
   price?: {
     longName?: string;
     shortName?: string;
+  };
+  defaultKeyStatistics?: {
+    enterpriseValue?: number;
+    priceToBook?: number;
+    enterpriseToEbitda?: number;
+    forwardPE?: number;
+    beta?: number;
+  };
+  summaryDetail?: {
+    beta?: number;
+    priceToSalesTrailing12Months?: number;
+  };
+  financialData?: {
+    returnOnEquity?: number;
   };
 };
 
@@ -105,6 +129,7 @@ export async function fetchQuotes(tickers: string[]): Promise<FmpQuote[]> {
       price: q.regularMarketPrice,
       marketCap: numOrNull(q.marketCap),
       pe: numOrNull(q.trailingPE ?? q.forwardPE),
+      forwardPe: numOrNull(q.forwardPE),
       eps: numOrNull(q.epsTrailingTwelveMonths ?? q.epsForward),
       dayChangePct: dayChangeDecimal,
       previousClose: numOrNull(q.regularMarketPreviousClose),
@@ -131,8 +156,17 @@ export async function fetchProfiles(tickers: string[]): Promise<FmpProfile[]> {
     tickers.map(async (ticker) => {
       try {
         const summary = (await yahooFinance.quoteSummary(ticker, {
-          modules: ["assetProfile", "price"],
+          modules: [
+            "assetProfile",
+            "price",
+            "defaultKeyStatistics",
+            "summaryDetail",
+            "financialData",
+          ],
         })) as unknown as YQuoteSummary;
+        const ks = summary.defaultKeyStatistics;
+        const sd = summary.summaryDetail;
+        const fd = summary.financialData;
         return {
           symbol: ticker,
           sector: strOrNull(summary.assetProfile?.sector),
@@ -140,6 +174,15 @@ export async function fetchProfiles(tickers: string[]): Promise<FmpProfile[]> {
           companyName: strOrNull(
             summary.price?.longName ?? summary.price?.shortName,
           ),
+          enterpriseValue: numOrNull(ks?.enterpriseValue),
+          priceToBook: numOrNull(ks?.priceToBook),
+          evToEbitda: numOrNull(ks?.enterpriseToEbitda),
+          // Yahoo returns ROE as a decimal (0.18 = 18%). Pass through
+          // unchanged — UI converts to percent at render time.
+          roe: numOrNull(fd?.returnOnEquity),
+          // Beta lives in defaultKeyStatistics for most equities and
+          // summaryDetail for some — fall through.
+          beta: numOrNull(ks?.beta ?? sd?.beta),
         };
       } catch {
         // Yahoo occasionally 404s assetProfile for funds/ETFs. Return
@@ -149,6 +192,11 @@ export async function fetchProfiles(tickers: string[]): Promise<FmpProfile[]> {
           sector: null,
           industry: null,
           companyName: null,
+          enterpriseValue: null,
+          priceToBook: null,
+          evToEbitda: null,
+          roe: null,
+          beta: null,
         };
       }
     }),

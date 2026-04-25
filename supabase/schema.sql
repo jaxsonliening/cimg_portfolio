@@ -132,14 +132,27 @@ create table if not exists public.price_snapshots (
   market_cap        numeric(20,2),
   enterprise_value  numeric(20,2),
   pe_ratio          numeric(12,4),
+  forward_pe        numeric(12,4),
   eps               numeric(12,4),
   dividend_yield    numeric(8,6),
+  price_to_book     numeric(12,4),
+  ev_to_ebitda      numeric(12,4),
+  roe               numeric(10,6),
+  beta              numeric(8,4),
   sector            text,
   industry          text,
   source            text not null,
   created_at        timestamptz not null default now(),
   primary key (ticker, snapshot_date)
 );
+
+-- Backfill for re-runs against an older schema that lacked the extended
+-- fundamentals columns. Adding them as nullable is a metadata-only op.
+alter table public.price_snapshots add column if not exists forward_pe    numeric(12,4);
+alter table public.price_snapshots add column if not exists price_to_book numeric(12,4);
+alter table public.price_snapshots add column if not exists ev_to_ebitda  numeric(12,4);
+alter table public.price_snapshots add column if not exists roe           numeric(10,6);
+alter table public.price_snapshots add column if not exists beta          numeric(8,4);
 
 create index if not exists price_snapshots_date_idx on public.price_snapshots (snapshot_date);
 

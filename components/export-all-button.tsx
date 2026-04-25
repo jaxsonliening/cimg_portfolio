@@ -69,13 +69,15 @@ export function ExportAllButton({ summary, positions, moves }: Args) {
     const fundamentalsHeader = [
       "Company", "Ticker", "Sector", "Industry",
       "Market Cap ($)", "Enterprise Value ($)",
-      "P/E", "EPS ($)", "Dividend Yield (decimal)",
+      "P/E", "Forward P/E", "P/B", "EV/EBITDA",
+      "EPS ($)", "ROE (decimal)", "Dividend Yield (decimal)", "Beta",
       "Current Price ($)",
     ];
     const fundamentalsRows = positions.map((p) => [
       p.name, p.ticker, p.sector, p.industry,
       p.market_cap, p.enterprise_value,
-      p.pe_ratio, p.eps, p.dividend_yield,
+      p.pe_ratio, p.forward_pe, p.price_to_book, p.ev_to_ebitda,
+      p.eps, p.roe, p.dividend_yield, p.beta,
       p.current_price,
     ]);
     blocks.push(toCsv(fundamentalsHeader, fundamentalsRows));
