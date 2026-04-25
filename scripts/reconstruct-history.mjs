@@ -86,13 +86,17 @@ for (const p of posRows ?? []) {
 
 const { data: cashRows, error: cashErr } = await supabase
   .from("cash_transactions")
-  .select("amount");
+  .select("amount, occurred_at");
 if (cashErr) {
   console.error("Failed to read cash_transactions:", cashErr.message);
   process.exit(1);
 }
 const currentCash = (cashRows ?? []).reduce((s, r) => s + Number(r.amount), 0);
-console.log(`Current cash: $${currentCash.toFixed(2)}`);
+const cashTxs = (cashRows ?? []).map((r) => ({
+  date: r.occurred_at,
+  amount: Number(r.amount),
+}));
+console.log(`Current cash: $${currentCash.toFixed(2)}  (${cashTxs.length} cash_transactions rows)`);
 
 // -- Load daily closes for every relevant ticker ----------------------------
 
@@ -102,18 +106,44 @@ for (const tx of txs) everHeldTickers.add(tx.ticker);
 const earliestTxDate = txs.length ? txs[0].date : new Date().toISOString().slice(0, 10);
 const startDate = explicitStart ?? earliestTxDate;
 
-const { data: snapRows, error: snapErr } = await supabase
-  .from("price_snapshots")
-  .select("ticker, snapshot_date, close_price")
-  .in("ticker", Array.from(everHeldTickers))
-  .gte("snapshot_date", startDate);
-if (snapErr) {
-  console.error("Failed to read price_snapshots:", snapErr.message);
-  process.exit(1);
+// Supabase caps single-query reads at 1000 rows. 26 tickers * ~500
+// trading days = ~13k rows, so without pagination we'd silently miss
+// most closes and under-count equity by ~8x on the resulting chart.
+//
+// Order by (snapshot_date, ticker) — both columns are needed for
+// stable pagination. snapshot_date alone has 26 ties per date, and
+// PostgreSQL is free to return ties in a different order on each
+// .range() call. When a 1000-row page boundary fell inside a date,
+// some (ticker, date) rows were duplicated and others silently
+// skipped, undercounting today's equity by ~58% (~$1.4M missing).
+const snapRows = [];
+const PAGE = 1000;
+for (let page = 0; ; page++) {
+  const from = page * PAGE;
+  const to = from + PAGE - 1;
+  const { data, error } = await supabase
+    .from("price_snapshots")
+    .select("ticker, snapshot_date, close_price")
+    .in("ticker", Array.from(everHeldTickers))
+    .gte("snapshot_date", startDate)
+    .order("snapshot_date", { ascending: true })
+    .order("ticker", { ascending: true })
+    .range(from, to);
+  if (error) {
+    console.error("Failed to read price_snapshots:", error.message);
+    process.exit(1);
+  }
+  const rows = data ?? [];
+  snapRows.push(...rows);
+  if (rows.length < PAGE) break;
+  if (page >= 49) {
+    console.error("price_snapshots pagination hit 50k-row safety cap.");
+    process.exit(1);
+  }
 }
 const pricesByTickerDate = new Map();
 const allDates = new Set();
-for (const row of snapRows ?? []) {
+for (const row of snapRows) {
   if (!pricesByTickerDate.has(row.ticker)) pricesByTickerDate.set(row.ticker, new Map());
   pricesByTickerDate.get(row.ticker).set(row.snapshot_date, Number(row.close_price));
   allDates.add(row.snapshot_date);
@@ -142,6 +172,15 @@ function sharesAt(ticker, isoDate) {
 
 function cashAt(isoDate) {
   let c = currentCash;
+  // Undo cash_transactions (deposits, capital injections, dividends) that
+  // hadn't happened yet at isoDate. Without this, today's cash leaks
+  // backward into every pre-deposit day on the chart — e.g. an $82k deposit
+  // dated 2026-03-31 would inflate every reconstructed day from 2024-04
+  // onward by $82k.
+  for (const ct of cashTxs) {
+    if (ct.date <= isoDate) continue;
+    c -= ct.amount;
+  }
   for (const tx of txsByDateAsc) {
     if (tx.date <= isoDate) continue;
     const amount = tx.shares * tx.price;

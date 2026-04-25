@@ -52,10 +52,15 @@ export async function POST(request: Request) {
         snapshot_date: today,
         close_price: q.price,
         market_cap: q.marketCap,
-        enterprise_value: null,
+        enterprise_value: p?.enterpriseValue ?? null,
         pe_ratio: q.pe,
+        forward_pe: q.forwardPe,
         eps: q.eps,
-        dividend_yield: null,
+        dividend_yield: q.dividendYield,
+        price_to_book: p?.priceToBook ?? null,
+        ev_to_ebitda: p?.evToEbitda ?? null,
+        roe: p?.roe ?? null,
+        beta: p?.beta ?? null,
         sector: p?.sector ?? null,
         industry: p?.industry ?? null,
         source: "fmp",
@@ -63,11 +68,17 @@ export async function POST(request: Request) {
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
+  // Canonical close timestamp (16:00 ET = 20:00 UTC). Re-runs of the
+  // daily cron then collide on the (symbol, observed_at) primary key
+  // and upsert overwrites the prior close cleanly — using `now()` here
+  // produced a fresh observed_at each run, which slipped past the PK
+  // and tripped the partial unique index on (symbol, close_date)
+  // where is_daily_close.
   const spy = quotesBySymbol.get(BENCHMARK);
   const benchmarkRow = spy
     ? {
         symbol: BENCHMARK,
-        observed_at: now.toISOString(),
+        observed_at: `${today}T20:00:00Z`,
         price: spy.price,
         is_daily_close: true,
         close_date: today,
@@ -136,6 +147,20 @@ function checkAuth(request: Request): NextResponse | null {
 }
 
 function fail(code: string, err: unknown) {
-  const message = err instanceof Error ? err.message : String(err);
-  return NextResponse.json({ error: code, message }, { status: 500 });
+  return NextResponse.json({ error: code, message: errMessage(err) }, { status: 500 });
+}
+
+function errMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  // Supabase / PostgREST errors are plain objects with .message, .code,
+  // .hint, .details — not Error instances. String(err) on those returns
+  // "[object Object]", so unpack the useful fields explicitly.
+  if (err && typeof err === "object") {
+    const o = err as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const parts = [o.message, o.code, o.details, o.hint]
+      .filter((x) => x !== undefined && x !== null && x !== "")
+      .map((x) => String(x));
+    if (parts.length) return parts.join(" | ");
+  }
+  return String(err);
 }

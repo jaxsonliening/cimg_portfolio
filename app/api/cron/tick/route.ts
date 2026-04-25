@@ -93,6 +93,20 @@ function checkAuth(request: Request): NextResponse | null {
 }
 
 function fail(code: string, err: unknown) {
-  const message = err instanceof Error ? err.message : String(err);
-  return NextResponse.json({ error: code, message }, { status: 500 });
+  return NextResponse.json({ error: code, message: errMessage(err) }, { status: 500 });
+}
+
+function errMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  // Supabase / PostgREST errors are plain objects with .message, .code,
+  // .hint, .details — not Error instances. String(err) on those returns
+  // "[object Object]", so unpack the useful fields explicitly.
+  if (err && typeof err === "object") {
+    const o = err as { message?: unknown; code?: unknown; details?: unknown; hint?: unknown };
+    const parts = [o.message, o.code, o.details, o.hint]
+      .filter((x) => x !== undefined && x !== null && x !== "")
+      .map((x) => String(x));
+    if (parts.length) return parts.join(" | ");
+  }
+  return String(err);
 }
