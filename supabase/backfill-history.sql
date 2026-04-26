@@ -201,20 +201,17 @@ values
   ('2025-10-24', 2407115.3500),
   ('2025-10-31', 2325943.3000),
   ('2025-11-07', 2320191.7700),
-  ('2025-11-28', 2407603.7600),
-  ('2026-01-12', 2546779.0700),
-  ('2026-01-23', 2547267.6100),
-  ('2026-01-30', 2481649.5300),
-  ('2026-02-06', 2447378.9100),
-  ('2026-02-13', 2499962.0800),
-  ('2026-02-27', 2521917.0200),
-  ('2026-03-05', 2421230.8900),
-  ('2026-03-21', 2292136.7100),
-  ('2026-03-28', 2290072.6900),
-  ('2026-04-05', 2330806.0000),
-  ('2026-04-12', 2384520.0000),
-  ('2026-04-20', 2539000.0000)
+  ('2025-11-28', 2407603.7600)
 on conflict (snapshot_date) do nothing;
+
+-- 2026 weekly check-ins from the owner's spreadsheet were removed in
+-- favor of `npm run reconstruct-history`, which writes daily fund_snapshots
+-- from the transaction log + price_snapshots. The weekly markers landed
+-- on weekend dates (2026-03-21 Sat, 2026-03-28 Sat, 2026-04-05 Sun,
+-- 2026-04-12 Sun) that reconstruction can't reach (no price_snapshots
+-- entries exist for non-trading days), so they sat as $2.3M "spike"
+-- rows next to the rest of the YTD line and produced visible +500%
+-- bumps on the dashboard chart.
 
 insert into public.benchmark_snapshots
   (symbol, observed_at, price, is_daily_close, close_date)
@@ -294,17 +291,7 @@ values
   ('SPY', '2025-10-24T20:00:00Z', 677.2500, true, '2025-10-24'),
   ('SPY', '2025-10-31T20:00:00Z', 682.0600, true, '2025-10-31'),
   ('SPY', '2025-11-07T20:00:00Z', 670.9700, true, '2025-11-07'),
-  ('SPY', '2025-11-28T20:00:00Z', 683.3900, true, '2025-11-28'),
-  ('SPY', '2026-01-12T20:00:00Z', 695.1600, true, '2026-01-12'),
-  ('SPY', '2026-01-23T20:00:00Z', 689.2300, true, '2026-01-23'),
-  ('SPY', '2026-01-30T20:00:00Z', 691.9700, true, '2026-01-30'),
-  ('SPY', '2026-02-06T20:00:00Z', 690.6200, true, '2026-02-06'),
-  ('SPY', '2026-02-13T20:00:00Z', 681.7500, true, '2026-02-13'),
-  ('SPY', '2026-02-27T20:00:00Z', 685.9900, true, '2026-02-27'),
-  ('SPY', '2026-03-05T20:00:00Z', 672.3800, true, '2026-03-05'),
-  ('SPY', '2026-03-21T20:00:00Z', 648.5700, true, '2026-03-21'),
-  ('SPY', '2026-03-28T20:00:00Z', 634.0900, true, '2026-03-28'),
-  ('SPY', '2026-04-05T20:00:00Z', 655.8500, true, '2026-04-05'),
-  ('SPY', '2026-04-12T20:00:00Z', 679.4600, true, '2026-04-12'),
-  ('SPY', '2026-04-20T20:00:00Z', 710.3500, true, '2026-04-20')
+  ('SPY', '2025-11-28T20:00:00Z', 683.3900, true, '2025-11-28')
 on conflict (symbol, observed_at) do nothing;
+-- 2026 SPY weekly closes removed alongside their fund_snapshots
+-- counterparts above; the daily cron writes them once per session.

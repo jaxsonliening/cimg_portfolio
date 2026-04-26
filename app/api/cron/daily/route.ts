@@ -85,6 +85,22 @@ export async function POST(request: Request) {
       }
     : null;
 
+  // Refuse to write a fund_snapshot when Yahoo failed to return a quote
+  // for any current holding — without this we silently drop those tickers
+  // from equity and write a row that's, e.g., $1.2M instead of $2.5M
+  // (observed on 2026-04-24). Reconstruction or tomorrow's cron can fill
+  // the day in cleanly; a missing row is far less harmful than a wrong
+  // one because the chart anchors normalization to it.
+  const missingHoldingQuotes = Array.from(sharesByTicker.keys()).filter(
+    (t) => !quotesBySymbol.has(t),
+  );
+  if (missingHoldingQuotes.length > 0) {
+    return fail(
+      "fund_value_incomplete",
+      `Yahoo did not return quotes for: ${missingHoldingQuotes.join(", ")}`,
+    );
+  }
+
   let fundValue = 0;
   for (const [ticker, shares] of sharesByTicker) {
     const q = quotesBySymbol.get(ticker);
