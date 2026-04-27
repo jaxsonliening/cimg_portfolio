@@ -96,7 +96,13 @@ const failures = [];
 for (const symbol of allSymbols) {
   process.stdout.write(`  ${symbol.padEnd(8)} `);
   try {
-    const result = await yf.chart(symbol, {
+    // Yahoo expresses share-class tickers with a hyphen ("BRK-B"), not
+    // a dot like the rest of the data plumbing ("BRK.B"). Translate at
+    // the API boundary but keep `symbol` for storage so price_snapshots
+    // matches the form that positions, the TSV, and reconstruct-history
+    // all use.
+    const yahooSymbol = symbol.replace(/\./g, "-");
+    const result = await yf.chart(yahooSymbol, {
       period1,
       interval: "1d",
     });
