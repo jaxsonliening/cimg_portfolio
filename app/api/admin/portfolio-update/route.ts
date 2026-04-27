@@ -29,7 +29,10 @@ export async function GET() {
   const asOf = summary.as_of;
 
   // Fund-level since-last-update: take fund_snapshots & SPY closes
-  // bracketing the window. maybeSingle so a missing day doesn't 500.
+  // bracketing the window. Use "<= date desc limit 1" rather than
+  // strict equality so a missing exact-date row (e.g. SPY had no
+  // 2026-03-31 close because we deleted a bogus one) falls back to
+  // the nearest prior trading day instead of returning a dash.
   let cimgPct: number | null = null;
   let spyPct: number | null = null;
   if (lastUpdate) {
@@ -37,26 +40,34 @@ export async function GET() {
       supabase
         .from("fund_snapshots")
         .select("total_value")
-        .eq("snapshot_date", lastUpdate)
+        .lte("snapshot_date", lastUpdate)
+        .order("snapshot_date", { ascending: false })
+        .limit(1)
         .maybeSingle(),
       supabase
         .from("fund_snapshots")
         .select("total_value")
-        .eq("snapshot_date", asOf)
+        .lte("snapshot_date", asOf)
+        .order("snapshot_date", { ascending: false })
+        .limit(1)
         .maybeSingle(),
       supabase
         .from("benchmark_snapshots")
         .select("price")
         .eq("symbol", "SPY")
         .eq("is_daily_close", true)
-        .eq("close_date", lastUpdate)
+        .lte("close_date", lastUpdate)
+        .order("close_date", { ascending: false })
+        .limit(1)
         .maybeSingle(),
       supabase
         .from("benchmark_snapshots")
         .select("price")
         .eq("symbol", "SPY")
         .eq("is_daily_close", true)
-        .eq("close_date", asOf)
+        .lte("close_date", asOf)
+        .order("close_date", { ascending: false })
+        .limit(1)
         .maybeSingle(),
     ]);
     if (

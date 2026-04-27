@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTickerPositions } from "@/lib/portfolio/positions";
 import { AdminPositionsTable } from "./admin-positions-table";
 import { RunPortfolioUpdateButton } from "./run-portfolio-update-button";
+import { LastUpdateBanner } from "./last-update-banner";
 
 export default async function AdminHome() {
   const supabase = await createClient();
@@ -19,6 +20,19 @@ export default async function AdminHome() {
     .filter((r) => r.kind === "dividend")
     .reduce((sum, r) => sum + r.amount, 0);
 
+  // The last-update banner needs max(value_updated_at) across ticker_meta —
+  // same definition as summary.last_update_trading_day. Pulling it directly
+  // here so the admin page doesn't have to compute the whole summary.
+  const { data: metaRows } = await supabase
+    .from("ticker_meta")
+    .select("value_updated_at");
+  let lastUpdate: string | null = null;
+  for (const m of metaRows ?? []) {
+    if (!m.value_updated_at) continue;
+    const d = m.value_updated_at.slice(0, 10);
+    if (lastUpdate === null || d > lastUpdate) lastUpdate = d;
+  }
+
   return (
     <div className="space-y-10">
       <div className="flex items-center justify-between">
@@ -27,6 +41,9 @@ export default async function AdminHome() {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Cash balance {fmt(cash)} &middot; Dividends total {fmt(dividendTotal)}
           </p>
+          <div className="mt-2">
+            <LastUpdateBanner lastUpdate={lastUpdate} />
+          </div>
         </div>
         <div className="flex gap-2">
           <RunPortfolioUpdateButton />
