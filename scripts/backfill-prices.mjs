@@ -93,27 +93,15 @@ let totalPriceRows = 0;
 let totalBenchRows = 0;
 const failures = [];
 
-// Some tickers in our books no longer match Yahoo's symbol. Translate
-// at every Yahoo API boundary while keeping the bookkeeping ticker
-// stable, so positions / the transaction log / price_snapshots can all
-// keep speaking the same name.
-//   FISV → FI: Fiserv re-incorporated mid-2024; the FISV symbol stopped
-//              receiving new prices and Yahoo returns "No data found"
-//              for it.
-//   BRK.B → BRK-B: Yahoo expresses share-class tickers with a hyphen.
-//                  Handled generically by the `.replace` below so any
-//                  future BRK.A / BF.B / RDS.A / etc. works the same way.
-const YAHOO_ALIASES = {
-  FISV: "FI",
-};
-function toYahooSymbol(symbol) {
-  return (YAHOO_ALIASES[symbol] ?? symbol).replace(/\./g, "-");
-}
-
 for (const symbol of allSymbols) {
   process.stdout.write(`  ${symbol.padEnd(8)} `);
   try {
-    const yahooSymbol = toYahooSymbol(symbol);
+    // Yahoo expresses share-class tickers with a hyphen ("BRK-B"), not
+    // a dot like the rest of the data plumbing ("BRK.B"). Translate at
+    // the API boundary but keep `symbol` for storage so price_snapshots
+    // matches the form that positions, the TSV, and reconstruct-history
+    // all use.
+    const yahooSymbol = symbol.replace(/\./g, "-");
     const result = await yf.chart(yahooSymbol, {
       period1,
       interval: "1d",

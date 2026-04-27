@@ -95,42 +95,16 @@ function strOrNull(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-// Some tickers in our books no longer match Yahoo's symbol. Translate
-// at every Yahoo API boundary while keeping the bookkeeping ticker
-// stable, so positions / the transaction log / price_snapshots can all
-// keep speaking the same name.
-//   FISV → FI: Fiserv re-incorporated mid-2024; FISV stopped receiving
-//              new quotes and Yahoo returns no data for it.
-//   BRK.B → BRK-B: Yahoo expresses share-class tickers with a hyphen.
-//                  Generic dot→hyphen translation handles BRK.A, BF.B,
-//                  RDS.A, etc. the same way.
-const YAHOO_ALIASES: Record<string, string> = {
-  FISV: "FI",
-};
-function toYahooSymbol(symbol: string): string {
-  return (YAHOO_ALIASES[symbol] ?? symbol).replace(/\./g, "-");
-}
-
 // Intraday tick path. yahoo-finance2's .quote accepts an array and
 // returns an array with matching length (or drops rows it couldn't
 // resolve). Values include fundamentals in the same payload.
 export async function fetchQuotes(tickers: string[]): Promise<FmpQuote[]> {
   if (tickers.length === 0) return [];
 
-  // Build a yahoo-symbol → book-symbol lookup so the response can be
-  // remapped back to the form the rest of the system expects. We can't
-  // rely on string heuristics to invert (BRK-B → BRK.B; FI → FISV),
-  // and Yahoo may drop items, so capture the pairing up front.
-  const yahooByBook = new Map(tickers.map((t) => [t, toYahooSymbol(t)]));
-  const bookByYahoo = new Map(
-    Array.from(yahooByBook.entries()).map(([book, y]) => [y, book]),
-  );
-  const yahooTickers = Array.from(yahooByBook.values());
-
   // Cast to unknown → concrete shape: yahoo-finance2's inferred return
   // type is a big discriminated union and TS can't narrow through
   // Array.isArray cleanly without help.
-  const raw = (await yahooFinance.quote(yahooTickers, { return: "array" })) as unknown;
+  const raw = (await yahooFinance.quote(tickers, { return: "array" })) as unknown;
   const list = Array.isArray(raw) ? (raw as YQuote[]) : [raw as YQuote];
 
   const out: FmpQuote[] = [];
@@ -151,7 +125,7 @@ export async function fetchQuotes(tickers: string[]): Promise<FmpQuote[]> {
     const dividendYieldDecimal =
       rawYield === null ? null : rawYield > 1 ? rawYield / 100 : rawYield;
     out.push({
-      symbol: bookByYahoo.get(q.symbol) ?? q.symbol,
+      symbol: q.symbol,
       price: q.regularMarketPrice,
       marketCap: numOrNull(q.marketCap),
       pe: numOrNull(q.trailingPE ?? q.forwardPE),
@@ -181,7 +155,7 @@ export async function fetchProfiles(tickers: string[]): Promise<FmpProfile[]> {
   const results = await Promise.all(
     tickers.map(async (ticker) => {
       try {
-        const summary = (await yahooFinance.quoteSummary(toYahooSymbol(ticker), {
+        const summary = (await yahooFinance.quoteSummary(ticker, {
           modules: [
             "assetProfile",
             "price",
