@@ -129,9 +129,14 @@ export async function getSummary(
     value: b.price,
   }));
 
-  const cimgPreCapital = pctChangePreInjection(fundSeries, capitalInjectionDate);
+  // Pre-injection returns are hard-coded from the historical record the
+  // owner provided. The reconstruction script doesn't have transaction-
+  // level data going back far enough to compute these reliably, and the
+  // monthly Excel check-ins were the source we trusted to know the
+  // returns at the time CIMG took over the portfolio.
+  const cimgPreCapital = 0.072;
+  const spyPreCapital = 0.117;
   const cimgPostCapital = pctChangePostInjection(fundSeries, capitalInjectionDate);
-  const spyPreCapital = pctChangePreInjection(spyDailySeries, capitalInjectionDate);
   const spyPostCapital = pctChangePostInjection(spyDailySeries, capitalInjectionDate);
 
   const currentYear = new Date().getUTCFullYear();
@@ -239,19 +244,6 @@ function alignByDate(
 }
 
 type DatedValue = { date: string; value: number };
-
-function pctChangePreInjection(
-  series: DatedValue[],
-  injectionDate: string | null,
-): number | null {
-  if (!injectionDate || series.length < 2) return null;
-  const first = series[0];
-  const lastBefore = [...series].filter((s) => s.date < injectionDate).pop();
-  if (!lastBefore || first.value <= 0 || first.date === lastBefore.date) {
-    return null;
-  }
-  return (lastBefore.value - first.value) / first.value;
-}
 
 function pctChangePostInjection(
   series: DatedValue[],

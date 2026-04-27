@@ -19,6 +19,23 @@ type Row = {
 };
 
 export function SummaryPanel({ summary }: { summary: PortfolioSummary }) {
+  // Post-injection returns are annualized (CAGR) from the total return
+  // already computed in lib/portfolio/summary.ts. The total return spans
+  // ~6 years of holding history, so the per-year figure is more useful
+  // than the cumulative number for comparing against SPY at a glance.
+  const yearsPostInjection = yearsBetween(
+    summary.capital_injection_date,
+    summary.as_of,
+  );
+  const cimgPostAnnualized = annualize(
+    summary.cimg_post_capital_injection_pct,
+    yearsPostInjection,
+  );
+  const spyPostAnnualized = annualize(
+    summary.spy_post_capital_injection_pct,
+    yearsPostInjection,
+  );
+
   const rows: Row[] = [
     { label: "Market Value of Equities", formatted: fmtCurrency(summary.market_value_equities), raw: summary.market_value_equities },
     { label: "Cash Balance", formatted: fmtCurrency(summary.cash_balance), raw: summary.cash_balance },
@@ -28,8 +45,8 @@ export function SummaryPanel({ summary }: { summary: PortfolioSummary }) {
     { label: "Equity Portfolio V/P (ex-Cash)", formatted: fmtNumber(summary.equity_vp_ex_cash, 2), raw: summary.equity_vp_ex_cash },
     { label: "CIMG Performance Pre Capital Injection", formatted: fmtPctSigned(summary.cimg_pre_capital_injection_pct), raw: summary.cimg_pre_capital_injection_pct, tone: summary.cimg_pre_capital_injection_pct },
     { label: "SPY Performance Pre Capital Injection", formatted: fmtPctSigned(summary.spy_pre_capital_injection_pct), raw: summary.spy_pre_capital_injection_pct, tone: summary.spy_pre_capital_injection_pct },
-    { label: "CIMG Performance Post Capital Injection", formatted: fmtPctSigned(summary.cimg_post_capital_injection_pct), raw: summary.cimg_post_capital_injection_pct, tone: summary.cimg_post_capital_injection_pct },
-    { label: "SPY Performance Post Capital Injection", formatted: fmtPctSigned(summary.spy_post_capital_injection_pct), raw: summary.spy_post_capital_injection_pct, tone: summary.spy_post_capital_injection_pct },
+    { label: "CIMG Performance Post Capital Injection (Annualized)", formatted: fmtPctSigned(cimgPostAnnualized), raw: cimgPostAnnualized, tone: cimgPostAnnualized },
+    { label: "SPY Performance Post Capital Injection (Annualized)", formatted: fmtPctSigned(spyPostAnnualized), raw: spyPostAnnualized, tone: spyPostAnnualized },
     { label: "CIMG Performance YTD", formatted: fmtPctSigned(summary.cimg_ytd_pct), raw: summary.cimg_ytd_pct, tone: summary.cimg_ytd_pct },
     { label: "SPY Performance YTD", formatted: fmtPctSigned(summary.spy_ytd_pct), raw: summary.spy_ytd_pct, tone: summary.spy_ytd_pct },
     { label: "CIMG Day Change", formatted: fmtPctSigned(summary.cimg_day_change_pct), raw: summary.cimg_day_change_pct, tone: summary.cimg_day_change_pct },
@@ -73,4 +90,16 @@ export function SummaryPanel({ summary }: { summary: PortfolioSummary }) {
       </table>
     </div>
   );
+}
+
+function yearsBetween(startIso: string | null, endIso: string): number {
+  if (!startIso) return 0;
+  const start = new Date(`${startIso}T00:00:00Z`).getTime();
+  const end = new Date(`${endIso}T00:00:00Z`).getTime();
+  return (end - start) / (365.25 * 24 * 60 * 60 * 1000);
+}
+
+function annualize(totalPct: number | null, years: number): number | null {
+  if (totalPct === null || years <= 0) return null;
+  return Math.pow(1 + totalPct, 1 / years) - 1;
 }
