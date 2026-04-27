@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getTickerPositions } from "@/lib/portfolio/positions";
 import { AdminPositionsTable } from "./admin-positions-table";
+import { RunPortfolioUpdateButton } from "./run-portfolio-update-button";
 
 export default async function AdminHome() {
   const supabase = await createClient();
@@ -28,6 +29,7 @@ export default async function AdminHome() {
           </p>
         </div>
         <div className="flex gap-2">
+          <RunPortfolioUpdateButton />
           <Link
             href="/admin/cash"
             className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow"

@@ -32,7 +32,7 @@ export default async function AdminAuthedLayout({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-baseline gap-4">
             <Link href="/admin" className="text-lg font-semibold">
               CIMG Admin
@@ -70,7 +70,7 @@ export default async function AdminAuthedLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
     </div>
   );
 }

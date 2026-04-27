@@ -64,6 +64,10 @@ export function LoginForm() {
       {status === "sent" ? (
         <div className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900">
           Check <strong>{sentTo}</strong> for a sign-in link.
+          <p className="mt-2 text-xs text-green-800/80">
+            Email delivery can take up to 5 minutes. If it hasn&apos;t arrived
+            by then, check your spam folder or request another link.
+          </p>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
