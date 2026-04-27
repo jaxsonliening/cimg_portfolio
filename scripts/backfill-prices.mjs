@@ -14,6 +14,12 @@
 
 import YahooFinance from "yahoo-finance2";
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TRANSACTIONS_PATH = join(__dirname, "transactions-2024-present.tsv");
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -50,7 +56,34 @@ if (posErr) {
 const heldTickers = Array.from(
   new Set((positionRows ?? []).map((r) => r.ticker)),
 );
-const allSymbols = Array.from(new Set([...heldTickers, BENCHMARK]));
+
+// Pull every ever-held ticker from the transaction log too. positions
+// only tracks current open lots; a ticker that was bought and later
+// sold (BRK.B, AVTR, CCI, CG, AKAM, FERG, …) doesn't appear there
+// anymore, so without this step its price_snapshots row count stays at
+// zero. reconstruct-history then silently skips that ticker on every
+// mid-window day, undercounting equity and inflating the chart's
+// later-vs-earlier return delta — the original symptom that surfaced
+// as CIMG showing ~2x SPY on the 1Y view.
+let tsvTickers = [];
+try {
+  const tsv = readFileSync(TRANSACTIONS_PATH, "utf8");
+  const set = new Set();
+  for (const line of tsv.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("date\t")) continue;
+    const ticker = trimmed.split("\t")[1];
+    if (ticker) set.add(ticker.toUpperCase());
+  }
+  tsvTickers = Array.from(set);
+} catch (err) {
+  console.error(`Could not read transaction log at ${TRANSACTIONS_PATH}: ${err.message}`);
+  process.exit(1);
+}
+
+const allSymbols = Array.from(
+  new Set([...heldTickers, ...tsvTickers, BENCHMARK]),
+);
 
 console.log(
   `Backfilling ${days} days of daily closes for ${allSymbols.length} symbols`,

@@ -159,7 +159,7 @@ const txsByDateAsc = [...txs];
 // At the last day (today), holdings = currentShares. For earlier days, we
 // undo each transaction that happened between day and today.
 
-function sharesAt(ticker, isoDate) {
+function sharesAtRaw(ticker, isoDate) {
   let s = currentShares.get(ticker) ?? 0;
   for (const tx of txsByDateAsc) {
     if (tx.ticker !== ticker) continue;
@@ -168,6 +168,18 @@ function sharesAt(ticker, isoDate) {
     else if (tx.action === "sell") s += tx.shares;
   }
   return s;
+}
+
+function sharesAt(ticker, isoDate) {
+  // A negative raw result means the TSV log has a buy with no offsetting
+  // sell AND no surviving position lot — i.e. the log is missing a sell.
+  // PYPL on 2025-04-30 is the live example. Without the clamp, the equity
+  // loop multiplies the negative against that day's close and *subtracts*
+  // from total fund value, which would corrupt every day before the orphan
+  // buy once price_snapshots gets backfilled for that ticker. We surface
+  // the data gap via the starting-holdings warning below — the clamp just
+  // stops the bad value from leaking into the chart.
+  return Math.max(0, sharesAtRaw(ticker, isoDate));
 }
 
 function cashAt(isoDate) {
@@ -196,7 +208,9 @@ const priorDate = tradingDays[0] ?? startDate;
 console.log(`\nImplied holdings just before ${priorDate}:`);
 const startHoldings = [];
 for (const ticker of everHeldTickers) {
-  const s = sharesAt(ticker, priorDate);
+  // Use the unclamped value here so the negative-shares warning below
+  // still surfaces missing-sell rows in the transaction log.
+  const s = sharesAtRaw(ticker, priorDate);
   if (s !== 0) startHoldings.push({ ticker, shares: s });
 }
 startHoldings.sort((a, b) => a.ticker.localeCompare(b.ticker));
