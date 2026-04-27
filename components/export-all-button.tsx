@@ -33,8 +33,8 @@ export function ExportAllButton({ summary, positions, moves }: Args) {
           ["Equity Portfolio V/P (ex-Cash)", summary.equity_vp_ex_cash],
           ["CIMG Performance Pre Capital Injection (decimal)", summary.cimg_pre_capital_injection_pct],
           ["SPY Performance Pre Capital Injection (decimal)", summary.spy_pre_capital_injection_pct],
-          ["CIMG Performance Post Capital Injection (decimal)", summary.cimg_post_capital_injection_pct],
-          ["SPY Performance Post Capital Injection (decimal)", summary.spy_post_capital_injection_pct],
+          ["CIMG Performance Post Capital Injection — Annualized (decimal)", annualize(summary.cimg_post_capital_injection_pct, yearsBetween(summary.capital_injection_date, summary.as_of))],
+          ["SPY Performance Post Capital Injection — Annualized (decimal)", annualize(summary.spy_post_capital_injection_pct, yearsBetween(summary.capital_injection_date, summary.as_of))],
           ["CIMG Performance YTD (decimal)", summary.cimg_ytd_pct],
           ["SPY Performance YTD (decimal)", summary.spy_ytd_pct],
           ["CIMG Day Change (decimal)", summary.cimg_day_change_pct],
@@ -113,4 +113,16 @@ export function ExportAllButton({ summary, positions, moves }: Args) {
       Download All (CSV)
     </button>
   );
+}
+
+function yearsBetween(startIso: string | null, endIso: string): number {
+  if (!startIso) return 0;
+  const start = new Date(`${startIso}T00:00:00Z`).getTime();
+  const end = new Date(`${endIso}T00:00:00Z`).getTime();
+  return (end - start) / (365.25 * 24 * 60 * 60 * 1000);
+}
+
+function annualize(totalPct: number | null, years: number): number | null {
+  if (totalPct === null || years <= 0) return null;
+  return Math.pow(1 + totalPct, 1 / years) - 1;
 }
