@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFullQuotes, fetchProfiles } from "@/lib/market/fmp";
 import { getActiveSharesByTicker } from "@/lib/portfolio/active-tickers";
+import { isTradingDay } from "@/lib/calc/nyse-holidays";
 
 const BENCHMARK = "SPY";
 const TICK_RETENTION_DAYS = 30;
@@ -10,19 +11,19 @@ export async function POST(request: Request) {
   const authFail = checkAuth(request);
   if (authFail) return authFail;
 
-  // Refuse to run on weekends. The scheduled GitHub Actions workflow
-  // already restricts to Mon-Fri, but manual curl-the-endpoint debug
-  // triggers were writing snapshots on Saturday with Yahoo's stale
-  // Friday close prices stored under a non-trading-day date — which
-  // then leaks into summary.as_of and shows up as a Saturday "as of"
-  // on every report. Bail with a 200 + skipped status so manual runs
-  // are obvious without surfacing as a workflow failure.
-  const utcDay = new Date().getUTCDay(); // 0 = Sun, 6 = Sat
-  if (utcDay === 0 || utcDay === 6) {
+  // Refuse to run on non-trading days. The scheduled GitHub Actions
+  // workflow already restricts to Mon-Fri, but holidays (Memorial Day,
+  // July 4, Thanksgiving, Christmas, etc.) still trigger the cron;
+  // Yahoo on a closed session returns the previous day's close, and
+  // writing that under today's date corrupts summary.as_of and the
+  // chart's most-recent point. Bail with a 200 + skipped status so
+  // manual runs and accidental holiday triggers are obvious.
+  const runAt = new Date();
+  if (!isTradingDay(runAt)) {
     return NextResponse.json({
       status: "skipped",
       reason: "non_trading_day",
-      day: utcDay === 0 ? "Sunday" : "Saturday",
+      date: runAt.toISOString().slice(0, 10),
     });
   }
 

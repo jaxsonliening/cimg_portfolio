@@ -2,18 +2,33 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchQuotes } from "@/lib/market/fmp";
 import { getActiveTickers } from "@/lib/portfolio/active-tickers";
+import { isTradingDay } from "@/lib/calc/nyse-holidays";
 
 const BENCHMARK = "SPY";
 
 // Intraday price tick. Called by .github/workflows/snapshot-ticks.yml every
 // 15 min on weekdays 13:00-21:15 UTC (US RTH plus pre/post-close). The
-// workflow schedule is the market-hours gate — we don't re-check here
-// because a silent-skip response reads as 200 OK in Actions logs, masking
-// failures and leaving Supabase empty while Actions shows green.
+// workflow schedule covers weekday hours but doesn't know about NYSE
+// holidays — on Memorial Day / July 4 / Thanksgiving / Christmas / etc.
+// the workflow still fires every 15 min, Yahoo returns the previous
+// session's close, and the resulting "ticks" are a flat line of stale
+// data. Skip explicitly on non-trading days (holidays + the rare
+// weekend trigger). The skipped response is unambiguous (it names the
+// reason and date) so it can't be confused with the silent-skip pattern
+// the comment used to warn about.
 
 export async function POST(request: Request) {
   const authFail = checkAuth(request);
   if (authFail) return authFail;
+
+  const runAt = new Date();
+  if (!isTradingDay(runAt)) {
+    return NextResponse.json({
+      status: "skipped",
+      reason: "non_trading_day",
+      date: runAt.toISOString().slice(0, 10),
+    });
+  }
 
   let supabase: ReturnType<typeof createAdminClient>;
   try {
